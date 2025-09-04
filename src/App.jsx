@@ -27,7 +27,7 @@ function App() {
   const [companyName, setCompanyName] = useState("");
   const [spoc, setSpoc] = useState("");
   const [spocManager, setSpocManager] = useState("");
-  const [degree, setDegree] = useState("");
+  const [designation, setDesignation] = useState("")
   const [mobileNumber, setMobileNumber] = useState("");
 
   // Usecase Details states
@@ -75,7 +75,7 @@ function App() {
       case "companyName": setCompanyName(value); break;
       case "spoc": setSpoc(value); break;
       case "spocManager": setSpocManager(value); break;
-      case "degree": setDegree(value); break;
+      case "designation": setDesignation(value); break;
       case "mobileNumber": setMobileNumber(value); break;
       case "usecase": setUsecase(value); break;
       case "brief": setBrief(value); break;
@@ -105,7 +105,7 @@ function App() {
     if (!companyName) newErrors.companyName = "Required";
     if (!spoc) newErrors.spoc = "Required";
     if (!spocManager) newErrors.spocManager = "Required";
-    if (!degree) newErrors.degree = "Required";
+    if (!designation) newErrors.designation = "Required";
     if (!mobileNumber) {
       newErrors.mobileNumber = "Required";
     } else if (!/^[0-9]{10}$/.test(mobileNumber)) {
@@ -126,7 +126,7 @@ function App() {
       companyName,
       spoc,
       spocManager,
-      degree,
+      designation,
       mobileNumber,
       usecase,
       brief,
@@ -159,7 +159,7 @@ function App() {
           setCompanyName("");
           setSpoc("");
           setSpocManager("");
-          setDegree("");
+          setDesignation("");
           setMobileNumber("");
           setUsecase("");
           setBrief("");
@@ -241,10 +241,10 @@ function App() {
             error={errors.spocManager}
           />
           <TextInput
-            label="Degree"
-            value={degree}
-            onChange={(val) => handleChange("degree", val)}
-            error={errors.degree}
+            label="Designation"
+            value={designation}
+            onChange={(val) => handleChange("designation", val)}
+            error={errors.designation}
           />
           <TextInput
             label="Mobile Number"
