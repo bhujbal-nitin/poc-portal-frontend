@@ -1,0 +1,88 @@
+
+
+/* Section container (holds heading + dropdowns) */
+.section-container {
+  margin: 30px auto;
+  padding: 20px;
+  max-width: 1000px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Section heading */
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1e3a8a; /* deep blue */
+  margin-bottom: 20px;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 8px;
+  text-align: left;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Dropdown row styling */
+.dropdown-row {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+/* Each dropdown box */
+.dropdown-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 220px;
+  max-width: 230px;
+}
+
+/* Label styling */
+.dropdown-label {
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: #374151; /* gray */
+}
+
+/* Select box styling */
+.dropdown-select {
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background-color: #f9fafb;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.dropdown-select:hover {
+  border-color: #3b82f6; /* blue */
+  background-color: #f1f5f9;
+}
+
+.dropdown-select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
+.required {
+  color: red;
+  margin-left: 4px;
+  font-weight: bold;
+}
+
+.dropdown-select.error {
+  border-color: red;
+  background-color: #fff5f5;
+}
+
+.error-message {
+  color: red;
+  font-size: 0.8rem;
+  margin-top: 4px;
+}
+
