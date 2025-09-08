@@ -1,29 +1,24 @@
 import React from "react";
-import "./UsecaseDetails.css";
 import TextInput from "./TextInput";
 
-export default function UsecaseDetails({
-  usecase,
-  setUsecase,
-  brief,
-  setBrief,
-  errors = {}          // ✅ accept errors
-}) {
+export default function UsecaseDetails({ usecase, setUsecase, brief, setBrief, errors }) {
   return (
     <div className="section-container">
       <h2 className="section-title">Usecase Details</h2>
-      <div className="usecase-row">
+      <div className="input-row">
         <TextInput
           label="Usecase"
           value={usecase}
           onChange={setUsecase}
-          error={errors.usecase}   // ✅ pass error to TextInput
+          error={errors.usecase}
+          required={true}   // ✅ mark required
         />
         <TextInput
           label="Brief"
           value={brief}
           onChange={setBrief}
-          error={errors.brief}     // ✅ pass error to TextInput
+          error={errors.brief}
+          required={true}   // ✅ mark required
         />
       </div>
     </div>
