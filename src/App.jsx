@@ -39,6 +39,11 @@ function App() {
   const [usecase, setUsecase] = useState("");
   const [brief, setBrief] = useState("");
 
+  const [submittedData, setSubmittedData] = useState(null);
+
+  const [loading, setLoading] = useState(false);
+
+
   // Error states
   const [errors, setErrors] = useState({});
 
@@ -128,7 +133,6 @@ function App() {
       if (partnerMobileNumber && !/^[0-9]{10}$/.test(partnerMobileNumber)) {
         newErrors.partnerMobileNumber = "Must be 10 digits";
       }
-
     }
 
     setErrors(newErrors);
@@ -150,8 +154,10 @@ function App() {
       partnerSpoc,
       partnerSpocEmail,
       partnerDesignation,
-      partnerMobileNumber
+      partnerMobileNumber,
     };
+
+    setLoading(true); // 🔹 disable button while saving
 
     fetch("http://localhost:5050/poc/save", {
       method: "POST",
@@ -166,10 +172,11 @@ function App() {
         return res.json();
       })
       .then((data) => {
-        if (data && data.pocId) {
-          alert("✅ POC initiated successfully 🚀 (ID: " + data.pocId + ")");
+        if (data && data.id) {
+          // ✅ Show confirmation in table instead of alert
+          setSubmittedData(data);
 
-          // 🔹 Reset all fields after successful save
+          // reset form
           setSalesPerson("");
           setRegion("");
           setEndCustomerType("");
@@ -181,14 +188,11 @@ function App() {
           setMobileNumber("");
           setUsecase("");
           setBrief("");
-
-          // ✅ Reset Partner fields
           setPartnerCompanyName("");
           setPartnerSpoc("");
           setPartnerSpocEmail("");
           setPartnerDesignation("");
           setPartnerMobileNumber("");
-
           setErrors({});
         } else {
           alert("⚠️ POC creation failed (no ID returned).");
@@ -197,7 +201,53 @@ function App() {
       .catch((err) => {
         console.error("Error saving POC:", err);
         alert("❌ POC creation failed: " + err.message);
+      })
+      .finally(() => {
+        setLoading(false); // 🔹 re-enable button after request
       });
+  };
+
+
+  // 🔹 Confirmation screen
+  if (submittedData) {
+  return (
+    <div className="confirmation-container">
+      <h2 className="confirmation-title">✅ POC Created Successfully</h2>
+      <table className="poc-table">
+        <tbody>
+          <tr><th>ID</th><td>{submittedData.id}</td></tr>
+          <tr><th>Sales Person</th><td>{submittedData.salesPerson}</td></tr>
+          <tr><th>Region</th><td>{submittedData.region}</td></tr>
+          <tr><th>End Customer Type</th><td>{submittedData.endCustomerType}</td></tr>
+          <tr><th>Process Type</th><td>{submittedData.processType}</td></tr>
+          <tr><th>Customer Company</th><td>{submittedData.companyName}</td></tr>
+          <tr><th>Customer SPOC</th><td>{submittedData.spoc}</td></tr>
+          <tr><th>Customer SPOC Email</th><td>{submittedData.spocEmail}</td></tr>
+          <tr><th>Designation</th><td>{submittedData.designation}</td></tr>
+          <tr><th>Mobile</th><td>{submittedData.mobileNumber}</td></tr>
+          <tr><th>Use Case</th><td>{submittedData.usecase}</td></tr>
+          <tr><th>Brief</th><td>{submittedData.brief}</td></tr>
+
+          {/* Partner Info only if Partner */}
+          {submittedData.endCustomerType === "Partner" && (
+            <>
+              <tr><th>Partner Company</th><td>{submittedData.partnerCompanyName}</td></tr>
+              <tr><th>Partner SPOC</th><td>{submittedData.partnerSpoc}</td></tr>
+              <tr><th>Partner SPOC Email</th><td>{submittedData.partnerSpocEmail}</td></tr>
+              <tr><th>Partner Designation</th><td>{submittedData.partnerDesignation}</td></tr>
+              <tr><th>Partner Mobile</th><td>{submittedData.partnerMobileNumber}</td></tr>
+            </>
+          )}
+        </tbody>
+      </table>
+
+        {/* ✅ Only keep New POC button */}
+        <Button onClick={() => setSubmittedData(null)} label="New POC" />
+      </div>
+    );
+
+
+
   };
 
   return (
@@ -240,7 +290,6 @@ function App() {
       </div>
 
       {/* Partner Info Section */}
-      {/* Partner Info Section */}
       {endCustomerType === "Partner" && (
         <div className="section-container">
           <h2 className="section-title">Partner Info</h2>
@@ -278,7 +327,7 @@ function App() {
               value={partnerMobileNumber}
               onChange={(val) => handleChange("partnerMobileNumber", val)}
               error={errors.partnerMobileNumber}
-              required={false}   
+              required={false}
             />
           </div>
         </div>
@@ -317,11 +366,11 @@ function App() {
             required={true}
           />
           <TextInput
-            label="Partner Mobile Number"
-            value={partnerMobileNumber}
-            onChange={(val) => handleChange("partnerMobileNumber", val)}
-            error={errors.partnerMobileNumber}
-            required={false} // optional
+            label="Mobile Number"
+            value={mobileNumber}   // ✅ should use mobileNumber state
+            onChange={(val) => handleChange("mobileNumber", val)}
+            error={errors.mobileNumber}
+            required={false}
           />
 
         </div>
@@ -339,7 +388,13 @@ function App() {
 
 
       {/* Submit Button */}
-      <Button onClick={handleSubmit} label="Initiate POC" type="submit" />
+      <Button
+        onClick={handleSubmit}
+        label={loading ? "Please wait..." : "Initiate POC"}
+        type="submit"
+        disabled={loading}
+      />
+
     </div>
   );
 }
