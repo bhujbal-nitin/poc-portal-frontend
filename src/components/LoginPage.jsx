@@ -16,7 +16,7 @@ const LoginPage = ({ onLogin }) => {
       ...prev,
       [name]: value
     }));
-    setError(''); // Clear error when user starts typing
+    setError('');
   };
 
   const handleSubmit = async (e) => {
@@ -25,32 +25,22 @@ const LoginPage = ({ onLogin }) => {
     setError('');
 
     try {
-      // Call your Spring Boot authentication endpoint
-      const response = await axios.post('http://localhost:8080/api/auth/login', credentials, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
+      const response = await axios.post('http://localhost:5050/api/auth/login', credentials);
+      
       if (response.status === 200) {
         const { token, user } = response.data;
         
-        // Store token in localStorage or context
         localStorage.setItem('authToken', token);
         localStorage.setItem('user', JSON.stringify(user));
         
-        // Notify parent component about successful login
         onLogin(user);
       }
     } catch (error) {
       if (error.response) {
-        // Server responded with error status
         setError(error.response.data.message || 'Login failed');
       } else if (error.request) {
-        // Network error
         setError('Network error. Please check your connection.');
       } else {
-        // Other errors
         setError('An unexpected error occurred.');
       }
     } finally {

@@ -12,9 +12,9 @@ export default function Dropdown({
 }) {
   return (
     <div className="dropdown-container">
-      <label className="dropdown-label">
-        {label} <span style={{ color: "red" }}>*</span>
-      </label>
+     <label className="dropdown-label" style={{ display: "inline-flex", alignItems: "center" }}>
+  {label} <span style={{ color: "red", marginLeft: "4px" }}>*</span>
+</label>
 
       <select
         value={value}
