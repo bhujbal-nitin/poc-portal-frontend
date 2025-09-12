@@ -16,6 +16,20 @@
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
+.logo-title-container {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.dashboard-logo {
+  height: 100px;
+  width: auto;
+  max-width: 120px;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
 .header-bar h1 {
   margin: 0;
   color: #333;
@@ -98,8 +112,26 @@
 @media (max-width: 768px) {
   .header-bar {
     flex-direction: column;
-    gap: 10px;
+    gap: 15px;
     text-align: center;
+  }
+  
+  .logo-title-container {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .dashboard-logo {
+    height: 55px;
+  }
+  
+  .header-bar h1 {
+    font-size: 1.5rem;
+  }
+  
+  .user-info {
+    flex-direction: column;
+    gap: 10px;
   }
   
   .dashboard-content {
@@ -109,5 +141,32 @@
   .dashboard-btn {
     padding: 12px 20px;
     font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-container {
+    padding: 15px;
+  }
+  
+  .header-bar {
+    padding: 15px;
+  }
+  
+  .dashboard-logo {
+    height: 30px;
+  }
+  
+  .header-bar h1 {
+    font-size: 1.3rem;
+  }
+  
+  .dashboard-content h2 {
+    font-size: 1.3rem;
+    margin-bottom: 20px;
+  }
+  
+  .dashboard-buttons {
+    gap: 15px;
   }
 }

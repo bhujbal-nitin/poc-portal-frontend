@@ -1,12 +1,20 @@
 // src/components/Dashboard.jsx
 import React from 'react';
 import './Dashboard.css';
+import companyLogo from '../components/Images/companyLogo.jpg';
 
 const Dashboard = ({ onNavigate, onLogout, user }) => {
   return (
     <div className="dashboard-container">
       <div className="header-bar">
-        <h1>POC Portal Dashboard</h1>
+        <div className="logo-title-container">
+          <img 
+            src={companyLogo} 
+            alt="Company Logo" 
+            className="dashboard-logo"
+          />
+          <h1>POC Portal Dashboard</h1>
+        </div>
         <div className="user-info">
           <span>Welcome, {user?.username}</span>
           <button onClick={onLogout} className="logout-btn">Logout</button>
