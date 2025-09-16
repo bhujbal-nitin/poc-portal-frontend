@@ -1,22 +1,19 @@
 // src/components/Dashboard.jsx
 import React from 'react';
 import './Dashboard.css';
-import companyLogo from '../components/Images/companyLogo.jpg';
 
 const Dashboard = ({ onNavigate, onLogout, user }) => {
   return (
     <div className="dashboard-container">
       <div className="header-bar">
         <div className="logo-title-container">
-          <img 
-            src={companyLogo} 
-            alt="Company Logo" 
-            className="dashboard-logo"
-          />
+          <div className="dashboard-logo-placeholder">
+            <span>Company Logo</span>
+          </div>
           <h1>POC Portal Dashboard</h1>
         </div>
         <div className="user-info">
-          <span>Welcome, {user?.username}</span>
+          <span>Welcome, {user?.username || 'User'}</span>
           <button onClick={onLogout} className="logout-btn">Logout</button>
         </div>
       </div>
@@ -34,7 +31,7 @@ const Dashboard = ({ onNavigate, onLogout, user }) => {
           
           <button 
             className="dashboard-btn secondary-btn"
-            onClick={() => onNavigate('poc-prj-id')}
+            onClick={() => onNavigate('poc-table')}
           >
             POC Code Creation
           </button>

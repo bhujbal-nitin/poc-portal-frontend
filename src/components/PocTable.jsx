@@ -1,397 +1,397 @@
-// src/components/PocPrjId.jsx
-import React, { useState, useEffect } from 'react';
-import Dropdown from './DropDown';
-import TextInput from './TextInput';
-import Button from './Button';
-import './PocPrjId.css';
-import companyLogo from '../components/Images/companyLogo.png'; // Import the logo
+// src/components/PocTable.jsx
+import * as React from 'react';
+import AppBar from '@mui/material/AppBar';
+import Box from '@mui/material/Box';
+import Toolbar from '@mui/material/Toolbar';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import MenuIcon from '@mui/icons-material/Menu';
+import Modal from '@mui/material/Modal';
+import PocPrjId from './PocPrjId';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Paper,
+    Chip,
+    TablePagination,
+    TextField,
+    InputAdornment,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Typography as MuiTypography,
+    Tooltip
+} from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import axios from 'axios';
 
-const PocPrjId = ({ onBack }) => {
-    // Form states
-    const [pocId, setPocId] = useState('');
-    const [pocName, setPocName] = useState('');
-    const [entityType, setEntityType] = useState('');
-    const [entityName, setEntityName] = useState('');
-    const [salesPerson, setSalesPerson] = useState('');
-    const [description, setDescription] = useState('');
-    const [assignedTo, setAssignedTo] = useState('');
-    const [createdBy, setCreatedBy] = useState('');
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
-    const [remark, setRemark] = useState('');
-    const [region, setRegion] = useState('');
-    const [isBillable, setIsBillable] = useState('');
-    const [pocType, setPocType] = useState('');
-    const [spocEmail, setSpocEmail] = useState('');
-    const [spocDesignation, setSpocDesignation] = useState('');
-    const [tags, setTags] = useState([]);
-    const [loading, setLoading] = useState(false);
+const PocTable = ({ onNavigate, onLogout, user }) => {
+    const [open, setOpen] = React.useState(false);
+    const [pocData, setPocData] = React.useState([]);
+    const [loading, setLoading] = React.useState(true);
+    const [page, setPage] = React.useState(0);
+    const [rowsPerPage, setRowsPerPage] = React.useState(10);
+    const [searchTerm, setSearchTerm] = React.useState('');
+    const [selectedPoc, setSelectedPoc] = React.useState(null);
+    const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
 
-    // Dropdown options (dummy data - replace with API calls)
-    const [salesPersons, setSalesPersons] = useState([]);
-    const [regions, setRegions] = useState([]);
-    const [users, setUsers] = useState([]);
-    const [tagOptions, setTagOptions] = useState([]);
+    const handleOpen = () => setOpen(true);
+    const handleClose = () => setOpen(false);
 
-    // Error states
-    const [errors, setErrors] = useState({});
+    // Fetch POC data
+    const fetchPocData = async () => {
+        try {
+            setLoading(true);
+            const token = localStorage.getItem('authToken');
+            const response = await axios.get('http://localhost:5050/poc/all', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            setPocData(response.data);
+        } catch (error) {
+            console.error('Error fetching POC data:', error);
+            alert('Failed to fetch POC data');
+        } finally {
+            setLoading(false);
+        }
+    };
 
-    // Load dropdown data
-    useEffect(() => {
-        // Dummy data - replace with API calls
-        setSalesPersons(['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson']);
-        setRegions(['North America', 'Europe', 'Asia Pacific', 'Middle East', 'Africa']);
-        setUsers(['admin', 'manager', 'developer', 'tester', 'analyst']);
-        setTagOptions(['Urgent', 'High Priority', 'Low Priority', 'Internal', 'External', 'Critical']);
+    React.useEffect(() => {
+        fetchPocData();
     }, []);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const handleChangePage = (event, newPage) => {
+        setPage(newPage);
+    };
 
-        // Validation
-        const newErrors = {};
-        if (!pocId) newErrors.pocId = 'POC/Project ID is required';
-        if (!pocName) newErrors.pocName = 'POC/Project Name is required';
-        if (!entityType) newErrors.entityType = 'Entity Type is required';
-        if (!entityName) newErrors.entityName = 'Entity Name is required';
-        if (!salesPerson) newErrors.salesPerson = 'Sales Person is required';
-        if (!assignedTo) newErrors.assignedTo = 'Assigned To is required';
-        if (!createdBy) newErrors.createdBy = 'Created By is required';
-        if (!startDate) newErrors.startDate = 'Start Date is required';
-        if (!endDate) newErrors.endDate = 'End Date is required';
-        if (!region) newErrors.region = 'Region is required';
-        if (!isBillable) newErrors.isBillable = 'Billable status is required';
-        if (!pocType) newErrors.pocType = 'POC Type is required';
-        if (tags.length === 0) newErrors.tags = 'At least one tag is required';
+    const handleChangeRowsPerPage = (event) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
+    };
 
-        setErrors(newErrors);
+    // Filter data based on search term
+    const filteredData = pocData.filter(poc =>
+        poc.pocId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        poc.pocName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        poc.entityName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        poc.salesPerson?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        poc.region?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        poc.entityType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        poc.assignedTo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        poc.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        poc.tags?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
-        if (Object.keys(newErrors).length === 0) {
-            setLoading(true);
-            
-            try {
-                // Prepare form data for database
-                const formData = {
-                    pocId,
-                    pocName,
-                    entityType,
-                    entityName,
-                    salesPerson,
-                    description,
-                    assignedTo,
-                    createdBy,
-                    startDate,
-                    endDate,
-                    remark,
-                    region,
-                    isBillable: isBillable === 'Yes',
-                    pocType,
-                    spocEmail,
-                    spocDesignation,
-                    tags: tags.join(',') // Convert array to comma-separated string for database
-                };
+    const paginatedData = filteredData.slice(
+        page * rowsPerPage,
+        page * rowsPerPage + rowsPerPage
+    );
 
-                // Get authentication token
-                const token = localStorage.getItem('authToken');
-                
-                // Make API call to save the data
-                const response = await axios.post('http://localhost:5050/poc/savepocprjid', formData, {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
+    const handleViewDetails = (poc) => {
+        setSelectedPoc(poc);
+        setDetailDialogOpen(true);
+    };
 
-                if (response.data.success) {
-                    alert('POC Code created successfully!');
-                    // Reset form after successful submission
-                    resetForm();
-                } else {
-                    alert('Failed to create POC Code: ' + response.data.message);
-                }
-            } catch (error) {
-                console.error('Error saving POC Code:', error);
-                if (error.response?.status === 401) {
-                    alert('Session expired. Please login again.');
-                    // Handle logout or redirect to login
-                } else {
-                    alert('Error saving POC Code. Please try again.');
-                }
-            } finally {
-                setLoading(false);
-            }
+    const handleCloseDetails = () => {
+        setDetailDialogOpen(false);
+        setSelectedPoc(null);
+    };
+
+    // Style for the modal
+    const modalStyle = {
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: '80%',
+        height: '80%',
+        bgcolor: 'background.paper',
+        boxShadow: 24,
+        p: 0,
+        overflow: 'auto',
+        borderRadius: '8px'
+    };
+
+    const getStatusColor = (status) => {
+        switch (status?.toLowerCase()) {
+            case 'completed': return 'success';
+            case 'in progress': return 'warning';
+            case 'pending': return 'default';
+            case 'draft': return 'secondary';
+            default: return 'default';
         }
     };
 
-    const resetForm = () => {
-        setPocId('');
-        setPocName('');
-        setEntityType('');
-        setEntityName('');
-        setSalesPerson('');
-        setDescription('');
-        setAssignedTo('');
-        setCreatedBy('');
-        setStartDate('');
-        setEndDate('');
-        setRemark('');
-        setRegion('');
-        setIsBillable('');
-        setPocType('');
-        setSpocEmail('');
-        setSpocDesignation('');
-        setTags([]);
-        setErrors({});
+    const getBillableChip = (isBillable) => {
+        return (
+            <Chip
+                label={isBillable ? 'Billable' : 'Non-Billable'}
+                color={isBillable ? 'success' : 'default'}
+                size="small"
+            />
+        );
     };
 
-    const handleTagSelect = (tag) => {
-        if (!tags.includes(tag)) {
-            setTags([...tags, tag]);
-            // Clear tag error when a tag is selected
-            if (errors.tags) {
-                setErrors({ ...errors, tags: null });
-            }
-        }
+    const formatDate = (dateString) => {
+        if (!dateString) return '-';
+        return new Date(dateString).toLocaleDateString();
     };
 
-    const removeTag = (tagToRemove) => {
-        setTags(tags.filter(tag => tag !== tagToRemove));
+    const truncateText = (text, maxLength = 30) => {
+        if (!text) return '-';
+        if (text.length <= maxLength) return text;
+        return text.substring(0, maxLength) + '...';
     };
 
     return (
-        <div className="poc-prj-container">
-            <div className="header-bar">
-                <div className="logo-title-container">
-                    <img 
-                        src={companyLogo} 
-                        alt="Company Logo" 
-                        className="header-logo"
+        <Box sx={{ flexGrow: 1 }}>
+            <AppBar position="static">
+                <Toolbar>
+                    <IconButton
+                        size="large"
+                        edge="start"
+                        color="inherit"
+                        aria-label="menu"
+                        sx={{ mr: 2 }}
+                        onClick={() => onNavigate('dashboard')}
+                    >
+                        <MenuIcon />
+                    </IconButton>
+                    <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                        POC Code Management
+                    </Typography>
+                    <Typography variant="body1" sx={{ mr: 2 }}>
+                        Welcome, {user?.username}
+                    </Typography>
+
+                    <Button
+                        color="inherit"
+                        onClick={handleOpen}
+                        sx={{ mr: 1 }}
+                    >
+                        Create POC
+                    </Button>
+
+                    <Button color="inherit" onClick={onLogout}>Logout</Button>
+                </Toolbar>
+            </AppBar>
+
+            {/* Modal for PocPrjId */}
+      
+            <Modal
+                open={open}
+                onClose={handleClose}  // Add this line to handle backdrop clicks
+                aria-labelledby="poc-creation-modal"
+                aria-describedby="poc-creation-form"
+            >
+                <Box sx={modalStyle}>
+                    <PocPrjId
+                        onClose={handleClose}  // Pass the close function
+                        onSuccess={() => {
+                            handleClose();
+                            fetchPocData();
+                        }}
                     />
-                    <h2>POC Code Creation</h2>
-                </div>
-                <button onClick={onBack} className="back-btn">Back to Dashboard</button>
-            </div>
+                </Box>
+            </Modal>
 
-            <div className="poc-prj-content">
-                <form onSubmit={handleSubmit} className="poc-prj-form">
-                    <div className="form-section">
-                        <h3>Add New POC ID</h3>
+            {/* Detail Dialog */}
+            <Dialog open={detailDialogOpen} onClose={handleCloseDetails} maxWidth="md" fullWidth>
+                <DialogTitle>POC Details - {selectedPoc?.pocId}</DialogTitle>
+                <DialogContent dividers>
+                    {selectedPoc && (
+                        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                            <DetailItem label="POC ID" value={selectedPoc.pocId} />
+                            <DetailItem label="POC Name" value={selectedPoc.pocName} />
+                            <DetailItem label="Entity Type" value={selectedPoc.entityType} />
+                            <DetailItem label="Entity Name" value={selectedPoc.entityName} />
+                            <DetailItem label="Sales Person" value={selectedPoc.salesPerson} />
+                            <DetailItem label="Region" value={selectedPoc.region} />
+                            <DetailItem label="Billable" value={selectedPoc.isBillable ? 'Yes' : 'No'} />
+                            <DetailItem label="POC Type" value={selectedPoc.pocType} />
+                            <DetailItem label="Assigned To" value={selectedPoc.assignedTo} />
+                            <DetailItem label="Created By" value={selectedPoc.createdBy} />
+                            <DetailItem label="Start Date" value={formatDate(selectedPoc.startDate)} />
+                            <DetailItem label="End Date" value={formatDate(selectedPoc.endDate)} />
+                            <DetailItem label="SPOC Email" value={selectedPoc.spocEmail || '-'} />
+                            <DetailItem label="SPOC Designation" value={selectedPoc.spocDesignation || '-'} />
+                            <DetailItem label="Tags" value={selectedPoc.tags || '-'} />
+                            <DetailItem label="Description" value={selectedPoc.description || '-'} />
+                            <DetailItem label="Remark" value={selectedPoc.remark || '-'} />
+                            <DetailItem label="Status" value={selectedPoc.status || 'Draft'} />
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseDetails}>Close</Button>
+                </DialogActions>
+            </Dialog>
 
-                        <div className="form-row">
-                            <TextInput
-                                label="POC, Project ID: "
-                                value={pocId}
-                                onChange={setPocId}
-                                error={errors.pocId}
-                                placeholder="Enter POC/Project ID"
-                                required
-                            />
+            {/* Main content */}
+            <Box sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                    <Typography variant="h5" gutterBottom>
+                        POC Code List ({pocData.length})
+                    </Typography>
 
-                            <TextInput
-                                label="POC, Project Name: "
-                                value={pocName}
-                                onChange={setPocName}
-                                error={errors.pocName}
-                                placeholder="Enter POC/Project Name"
-                                required
-                            />
-                        </div>
+                    <TextField
+                        placeholder="Search POC codes..."
+                        variant="outlined"
+                        size="small"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <SearchIcon />
+                                </InputAdornment>
+                            ),
+                        }}
+                        sx={{ width: 300 }}
+                    />
+                </Box>
 
-                        <div className="form-row">
-                            <Dropdown
-                                label="Partner, Client, Internal: "
-                                options={['Partner', 'Client', 'Internal']}
-                                value={entityType}
-                                onChange={setEntityType}
-                                error={errors.entityType}
-                                placeholder="Select Entity Type"
-                                required
-                            />
+                {loading ? (
+                    <Typography>Loading POC data...</Typography>
+                ) : (
+                    <>
+                        <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 200px)', overflowX: 'auto' }}>
+                            <Table stickyHeader sx={{ minWidth: 1800 }} aria-label="poc table">
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell><strong>POC ID</strong></TableCell>
+                                        <TableCell><strong>Project Name</strong></TableCell>
+                                        <TableCell><strong>Entity Type</strong></TableCell>
+                                        <TableCell><strong>Entity Name</strong></TableCell>
+                                        <TableCell><strong>Sales Person</strong></TableCell>
+                                        <TableCell><strong>Description</strong></TableCell>
+                                        <TableCell><strong>Assigned To</strong></TableCell>
+                                        <TableCell><strong>Created By</strong></TableCell>
+                                        <TableCell><strong>Start Date</strong></TableCell>
+                                        <TableCell><strong>End Date</strong></TableCell>
+                                        <TableCell><strong>Remark</strong></TableCell>
+                                        <TableCell><strong>Region</strong></TableCell>
+                                        <TableCell><strong>Billable</strong></TableCell>
+                                        <TableCell><strong>POC Type</strong></TableCell>
+                                        <TableCell><strong>SPOC Email</strong></TableCell>
+                                        <TableCell><strong>SPOC Designation</strong></TableCell>
+                                        <TableCell><strong>Tags</strong></TableCell>
+                                        <TableCell><strong>Status</strong></TableCell>
+                                        <TableCell><strong>Actions</strong></TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {paginatedData.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={19} align="center" sx={{ py: 3 }}>
+                                                <Typography variant="body1" color="textSecondary">
+                                                    {searchTerm ? 'No matching POC codes found' : 'No POC codes available. Click "Create POC" to get started.'}
+                                                </Typography>
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        paginatedData.map((poc) => (
+                                            <TableRow key={poc.pocId} hover>
+                                                <TableCell sx={{ fontWeight: 'bold' }}>{poc.pocId}</TableCell>
+                                                <TableCell>{poc.pocName}</TableCell>
+                                                <TableCell>{poc.entityType}</TableCell>
+                                                <TableCell>{poc.entityName}</TableCell>
+                                                <TableCell>{poc.salesPerson}</TableCell>
+                                                <TableCell>
+                                                    <Tooltip title={poc.description || '-'}>
+                                                        <span>{truncateText(poc.description, 20)}</span>
+                                                    </Tooltip>
+                                                </TableCell>
+                                                <TableCell>{poc.assignedTo}</TableCell>
+                                                <TableCell>{poc.createdBy}</TableCell>
+                                                <TableCell>{formatDate(poc.startDate)}</TableCell>
+                                                <TableCell>{formatDate(poc.endDate)}</TableCell>
+                                                <TableCell>
+                                                    <Tooltip title={poc.remark || '-'}>
+                                                        <span>{truncateText(poc.remark, 15)}</span>
+                                                    </Tooltip>
+                                                </TableCell>
+                                                <TableCell>{poc.region}</TableCell>
+                                                <TableCell>{getBillableChip(poc.isBillable)}</TableCell>
+                                                <TableCell>{poc.pocType}</TableCell>
+                                                <TableCell>{poc.spocEmail || '-'}</TableCell>
+                                                <TableCell>
+                                                    <Tooltip title={poc.spocDesignation || '-'}>
+                                                        <span>{truncateText(poc.spocDesignation, 15)}</span>
+                                                    </Tooltip>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Tooltip title={poc.tags || '-'}>
+                                                        <span>{truncateText(poc.tags, 15)}</span>
+                                                    </Tooltip>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Chip
+                                                        label={poc.status || 'Draft'}
+                                                        color={getStatusColor(poc.status)}
+                                                        size="small"
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => handleViewDetails(poc)}
+                                                        color="primary"
+                                                        title="View Details"
+                                                    >
+                                                        <VisibilityIcon />
+                                                    </IconButton>
+                                                    <IconButton size="small" color="secondary" title="Edit">
+                                                        <EditIcon />
+                                                    </IconButton>
+                                                    <IconButton size="small" color="error" title="Delete">
+                                                        <DeleteIcon />
+                                                    </IconButton>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
 
-                            <TextInput
-                                label="Name of Partner, Client, Internal: "
-                                value={entityName}
-                                onChange={setEntityName}
-                                error={errors.entityName}
-                                placeholder="Enter Name"
-                                required
-                            />
-                        </div>
-
-                        <div className="form-row">
-                            <Dropdown
-                                label="Sales Person: "
-                                options={salesPersons}
-                                value={salesPerson}
-                                onChange={setSalesPerson}
-                                error={errors.salesPerson}
-                                placeholder="Choose Sales Person"
-                                required
-                            />
-
-                            <TextInput
-                                label="Description:"
-                                value={description}
-                                onChange={setDescription}
-                                placeholder="Enter Description"
-                                multiline
-                                rows={3}
-                            />
-                        </div>
-
-                        <div className="form-row">
-                            <Dropdown
-                                label="Assigned To: "
-                                options={users}
-                                value={assignedTo}
-                                onChange={setAssignedTo}
-                                error={errors.assignedTo}
-                                placeholder="Select Assignee"
-                                required
-                            />
-
-                            <Dropdown
-                                label="Created By: "
-                                options={users}
-                                value={createdBy}
-                                onChange={setCreatedBy}
-                                error={errors.createdBy}
-                                placeholder="Select Creator"
-                                required
-                            />
-                        </div>
-
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Start Date: <span className="required-asterisk">*</span></label>
-                                <input
-                                    type="date"
-                                    value={startDate}
-                                    onChange={(e) => setStartDate(e.target.value)}
-                                    className={errors.startDate ? 'error' : ''}
-                                />
-                                {errors.startDate && <span className="error-text">{errors.startDate}</span>}
-                            </div>
-
-                            <div className="form-group">
-                                <label>End Date: <span className="required-asterisk">*</span></label>
-                                <input
-                                    type="date"
-                                    value={endDate}
-                                    onChange={(e) => setEndDate(e.target.value)}
-                                    className={errors.endDate ? 'error' : ''}
-                                />
-                                {errors.endDate && <span className="error-text">{errors.endDate}</span>}
-                            </div>
-                        </div>
-
-                        <div className="form-row">
-                            <TextInput
-                                label="Remark:"
-                                value={remark}
-                                onChange={setRemark}
-                                placeholder="Enter Remarks"
-                                multiline
-                                rows={2}
-                            />
-
-                            <Dropdown
-                                label="Region: "
-                                options={regions}
-                                value={region}
-                                onChange={setRegion}
-                                error={errors.region}
-                                placeholder="Select Region"
-                                required
-                            />
-                        </div>
-
-                        <div className="form-row">
-                            <Dropdown
-                                label="Is Billable: "
-                                options={['Yes', 'No']}
-                                value={isBillable}
-                                onChange={setIsBillable}
-                                error={errors.isBillable}
-                                placeholder="Select Billable Status"
-                                required
-                            />
-
-                            <Dropdown
-                                label="POC Type: "
-                                options={['Technical', 'Commercial', 'Strategic', 'Trial']}
-                                value={pocType}
-                                onChange={setPocType}
-                                error={errors.pocType}
-                                placeholder="Select POC Type"
-                                required
-                            />
-                        </div>
-
-                        <div className="form-row">
-                            <TextInput
-                                label="SPOC Email Address:"
-                                value={spocEmail}
-                                onChange={setSpocEmail}
-                                placeholder="Enter SPOC Email"
-                                type="email"
-                            />
-
-                            <TextInput
-                                label="SPOC Designation:"
-                                value={spocDesignation}
-                                onChange={setSpocDesignation}
-                                placeholder="Enter SPOC Designation"
-                            />
-                        </div>
-
-                        <div className="form-row">
-                            <div className="form-group">
-                                <label>Tags <span className="required-asterisk">*</span></label>
-                                <div className={`tags-container ${errors.tags ? 'tags-error-border' : ''}`}>
-                                    <Dropdown
-                                        options={tagOptions}
-                                        value=""
-                                        onChange={handleTagSelect}
-                                        placeholder="Select Tags"
-                                        showLabel={false}
-                                    />
-                                    <div className="selected-tags">
-                                        {tags.map(tag => (
-                                            <span key={tag} className="tag">
-                                                {tag}
-                                                <button type="button" onClick={() => removeTag(tag)}>×</button>
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
-                                {errors.tags && <span className="error-text">{errors.tags}</span>}
-                            </div>
-
-                            {/* Empty div to maintain 2-column layout */}
-                            <div></div>
-                        </div>
-
-                        <div className="form-actions">
-                            <Button 
-                                type="submit" 
-                                label={loading ? "Saving..." : "Submit"} 
-                                disabled={loading}
-                            />
-                            <Button 
-                                type="button" 
-                                label="I'm done!" 
-                                variant="secondary" 
-                                onClick={onBack} 
-                                disabled={loading}
-                            />
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
+                        <TablePagination
+                            rowsPerPageOptions={[5, 10, 25]}
+                            component="div"
+                            count={filteredData.length}
+                            rowsPerPage={rowsPerPage}
+                            page={page}
+                            onPageChange={handleChangePage}
+                            onRowsPerPageChange={handleChangeRowsPerPage}
+                            sx={{ mt: 2 }}
+                        />
+                    </>
+                )}
+            </Box>
+        </Box>
     );
 };
 
-export default PocPrjId;
+// Helper component for detail view
+const DetailItem = ({ label, value }) => (
+    <Box sx={{ mb: 1 }}>
+        <MuiTypography variant="subtitle2" color="textSecondary" gutterBottom>
+            {label}:
+        </MuiTypography>
+        <MuiTypography variant="body1">
+            {value || '-'}
+        </MuiTypography>
+    </Box>
+);
+
+export default PocTable;

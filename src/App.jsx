@@ -7,6 +7,7 @@ import Button from "./components/Button";
 import Dashboard from "./components/Dashboard";
 import PocPrjId from "./components/PocPrjId";
 import LoginPage from "./components/LoginPage";
+import PocTable from "./components/PocTable";
 import axios from "axios";
 import "./App.css";
 
@@ -19,12 +20,27 @@ function App() {
   // POC Form states
   const [salesPerson, setSalesPerson] = useState("");
   const [salesPersons, setSalesPersons] = useState([]);
+  const [loadingSalesPersons, setLoadingSalesPersons] = useState(false);
   const [region, setRegion] = useState("");
-  const [regions, setRegions] = useState([]);
+  const [regions, setRegions] = useState(['ROW', 'ISSARC', 'America', 'Other']);
   const [endCustomerType, setEndCustomerType] = useState("");
-  const [endCustomerTypes, setEndCustomerTypes] = useState([]);
+  const [endCustomerTypes, setEndCustomerTypes] = useState(['Client', 'Internal', 'Partner']);
   const [processType, setProcessType] = useState("");
-  const [processTypes, setProcessTypes] = useState([]);
+  const [processTypes, setProcessTypes] = useState([
+    'POC',
+    'POP',
+    'Partner Support',
+    'Feasibility Check',
+    'Operational Support',
+    'R&D',
+    'Solution Consultation',
+    'Efforts Estimation',
+    'Task',
+    'Demo',
+    'Internal',
+    'Event',
+    'Workshop'
+  ]);
   const [partnerCompanyName, setPartnerCompanyName] = useState("");
   const [partnerSpoc, setPartnerSpoc] = useState("");
   const [partnerSpocEmail, setPartnerSpocEmail] = useState("");
@@ -41,6 +57,31 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
+  // Function to fetch sales persons from API
+  const fetchSalesPersons = (token) => {
+    setLoadingSalesPersons(true);
+    axios.get('http://localhost:5050/poc/getAllSalesPerson', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+    .then(response => {
+      if (response.data && Array.isArray(response.data)) {
+        setSalesPersons(response.data);
+      } else {
+        console.error('Invalid response format for sales persons');
+        setSalesPersons([]);
+      }
+    })
+    .catch(error => {
+      console.error('Error fetching sales persons:', error);
+      setSalesPersons([]);
+    })
+    .finally(() => {
+      setLoadingSalesPersons(false);
+    });
+  };
+
   // Check if user is already logged in on app load
   useEffect(() => {
     const token = localStorage.getItem('authToken');
@@ -56,6 +97,9 @@ function App() {
           setCurrentUser(JSON.parse(userData));
           setCurrentView('dashboard');
           axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          
+          // Fetch sales persons after successful authentication
+          fetchSalesPersons(token);
         }
       })
       .catch(() => {
@@ -78,6 +122,8 @@ function App() {
     const token = localStorage.getItem('authToken');
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      // Fetch sales persons after login
+      fetchSalesPersons(token);
     }
   };
 
@@ -95,6 +141,8 @@ function App() {
       delete axios.defaults.headers.common['Authorization'];
       setCurrentUser(null);
       setCurrentView('login');
+      // Clear sales persons data on logout
+      setSalesPersons([]);
     }
   };
 
@@ -102,63 +150,6 @@ function App() {
   const navigateTo = (view) => {
     setCurrentView(view);
   };
-
-  // 🔹 Fetch data for POC form when needed
-  useEffect(() => {
-    if (currentView === 'initiate-poc') {
-      const token = localStorage.getItem('authToken');
-
-      const fetchOptions = {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      };
-
-      fetch("http://localhost:5050/poc/getAllSalesPerson", fetchOptions)
-        .then(res => {
-          if (res.status === 401) {
-            handleLogout();
-            throw new Error("Unauthorized");
-          }
-          return res.json();
-        })
-        .then(setSalesPersons)
-        .catch(err => console.error("Error fetching sales:", err));
-
-      fetch("http://localhost:5050/poc/getAllRegion", fetchOptions)
-        .then(res => {
-          if (res.status === 401) {
-            handleLogout();
-            throw new Error("Unauthorized");
-          }
-          return res.json();
-        })
-        .then(setRegions)
-        .catch(err => console.error("Error fetching regions:", err));
-
-      fetch("http://localhost:5050/poc/getAllCustomerTypes", fetchOptions)
-        .then(res => {
-          if (res.status === 401) {
-            handleLogout();
-            throw new Error("Unauthorized");
-          }
-          return res.json();
-        })
-        .then(setEndCustomerTypes)
-        .catch(err => console.error("Error fetching end customer types:", err));
-
-      fetch("http://localhost:5050/poc/getAllProcessType", fetchOptions)
-        .then(res => {
-          if (res.status === 401) {
-            handleLogout();
-            throw new Error("Unauthorized");
-          }
-          return res.json();
-        })
-        .then(setProcessTypes)
-        .catch(err => console.error("Error fetching process types:", err));
-    }
-  }, [currentView]);
 
   // Live update & remove error
   const handleChange = (field, value) => {
@@ -194,114 +185,112 @@ function App() {
   };
 
   // Form submit
-  // Form submit
-const handleSubmit = () => {
-  let newErrors = {};
+  const handleSubmit = () => {
+    let newErrors = {};
 
-  if (!salesPerson) newErrors.salesPerson = "Required";
-  if (!region) newErrors.region = "Required";
-  if (!endCustomerType) newErrors.endCustomerType = "Required";
-  if (!processType) newErrors.processType = "Required";
-  if (!companyName) newErrors.companyName = "Required";
-  if (!spoc) newErrors.spoc = "Required";
-  if (!spocEmail) newErrors.spocEmail = "Required";
-  if (!designation) newErrors.designation = "Required";
-  if (mobileNumber && !/^[0-9]{10}$/.test(mobileNumber)) {
-    newErrors.mobileNumber = "Must be 10 digits";
-  }
-  if (!usecase) newErrors.usecase = "Required";
-  if (!brief) newErrors.brief = "Required";
-
-  if (endCustomerType === "Partner") {
-    if (!partnerCompanyName) newErrors.partnerCompanyName = "Required";
-    if (!partnerSpoc) newErrors.partnerSpoc = "Required";
-    if (!partnerSpocEmail) newErrors.partnerSpocEmail = "Required";
-    if (!partnerDesignation) newErrors.partnerDesignation = "Required";
-    if (partnerMobileNumber && !/^[0-9]{10}$/.test(partnerMobileNumber)) {
-      newErrors.partnerMobileNumber = "Must be 10 digits";
+    if (!salesPerson) newErrors.salesPerson = "Required";
+    if (!region) newErrors.region = "Required";
+    if (!endCustomerType) newErrors.endCustomerType = "Required";
+    if (!processType) newErrors.processType = "Required";
+    if (!companyName) newErrors.companyName = "Required";
+    if (!spoc) newErrors.spoc = "Required";
+    if (!spocEmail) newErrors.spocEmail = "Required";
+    if (!designation) newErrors.designation = "Required";
+    if (mobileNumber && !/^[0-9]{10}$/.test(mobileNumber)) {
+      newErrors.mobileNumber = "Must be 10 digits";
     }
-  }
+    if (!usecase) newErrors.usecase = "Required";
+    if (!brief) newErrors.brief = "Required";
 
-  setErrors(newErrors);
-  if (Object.keys(newErrors).length > 0) return;
+    if (endCustomerType === "Partner") {
+      if (!partnerCompanyName) newErrors.partnerCompanyName = "Required";
+      if (!partnerSpoc) newErrors.partnerSpoc = "Required";
+      if (!partnerSpocEmail) newErrors.partnerSpocEmail = "Required";
+      if (!partnerDesignation) newErrors.partnerDesignation = "Required";
+      if (partnerMobileNumber && !/^[0-9]{10}$/.test(partnerMobileNumber)) {
+        newErrors.partnerMobileNumber = "Must be 10 digits";
+      }
+    }
 
-  const payload = {
-    salesPerson,
-    region,
-    endCustomerType,
-    processType,
-    companyName,
-    spoc,
-    spocEmail,
-    designation,
-    mobileNumber,
-    usecase,
-    brief,
-    partnerCompanyName,
-    partnerSpoc,
-    partnerSpocEmail,
-    partnerDesignation,
-    partnerMobileNumber,
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
+
+    const payload = {
+      salesPerson,
+      region,
+      endCustomerType,
+      processType,
+      companyName,
+      spoc,
+      spocEmail,
+      designation,
+      mobileNumber,
+      usecase,
+      brief,
+      partnerCompanyName,
+      partnerSpoc,
+      partnerSpocEmail,
+      partnerDesignation,
+      partnerMobileNumber,
+    };
+
+    setLoading(true);
+    const token = localStorage.getItem('authToken');
+
+    fetch("http://localhost:5050/poc/save", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify(payload),
+    })
+      .then(async (res) => {
+        if (res.status === 401) {
+          handleLogout();
+          throw new Error("Session expired. Please login again.");
+        }
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(errorText || "Unknown error");
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (data && data.id) {
+          setSubmittedData(data);
+          setCurrentView('confirmation');
+          
+          // Reset form
+          setSalesPerson("");
+          setRegion("");
+          setEndCustomerType("");
+          setProcessType("");
+          setCompanyName("");
+          setSpoc("");
+          setSpocEmail("");
+          setDesignation("");
+          setMobileNumber("");
+          setUsecase("");
+          setBrief("");
+          setPartnerCompanyName("");
+          setPartnerSpoc("");
+          setPartnerSpocEmail("");
+          setPartnerDesignation("");
+          setPartnerMobileNumber("");
+          setErrors({});
+        } else {
+          alert("⚠️ POC creation failed (no ID returned).");
+        }
+      })
+      .catch((err) => {
+        console.error("Error saving POC:", err);
+        alert("❌ POC creation failed: " + err.message);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   };
-
-  setLoading(true);
-  const token = localStorage.getItem('authToken');
-
-  fetch("http://localhost:5050/poc/save", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`
-    },
-    body: JSON.stringify(payload),
-  })
-    .then(async (res) => {
-      if (res.status === 401) {
-        handleLogout();
-        throw new Error("Session expired. Please login again.");
-      }
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(errorText || "Unknown error");
-      }
-      return res.json();
-    })
-    .then((data) => {
-      if (data && data.id) {
-        setSubmittedData(data);
-        // ✅ Navigate to confirmation screen after successful submission
-        setCurrentView('confirmation');
-        
-        // Reset form (optional - you might want to keep the form data for "New POC")
-        setSalesPerson("");
-        setRegion("");
-        setEndCustomerType("");
-        setProcessType("");
-        setCompanyName("");
-        setSpoc("");
-        setSpocEmail("");
-        setDesignation("");
-        setMobileNumber("");
-        setUsecase("");
-        setBrief("");
-        setPartnerCompanyName("");
-        setPartnerSpoc("");
-        setPartnerSpocEmail("");
-        setPartnerDesignation("");
-        setPartnerMobileNumber("");
-        setErrors({});
-      } else {
-        alert("⚠️ POC creation failed (no ID returned).");
-      }
-    })
-    .catch((err) => {
-      console.error("Error saving POC:", err);
-      alert("❌ POC creation failed: " + err.message);
-    })
-    .finally(() => {
-      setLoading(false);
-    });
-};
 
   // Show loading while checking authentication
   if (!authChecked) {
@@ -325,6 +314,15 @@ const handleSubmit = () => {
       
       case 'poc-prj-id':
         return <PocPrjId onBack={() => navigateTo('dashboard')} />;
+      
+      case 'poc-table':
+        return (
+          <PocTable 
+            onNavigate={navigateTo} 
+            onLogout={handleLogout} 
+            user={currentUser} 
+          />
+        );
       
       case 'initiate-poc':
         return renderPocForm();
@@ -364,6 +362,8 @@ const handleSubmit = () => {
               value={salesPerson}
               onChange={(val) => handleChange("salesPerson", val)}
               error={errors.salesPerson}
+              loading={loadingSalesPersons}
+              placeholder={loadingSalesPersons ? "Loading sales persons..." : "Select sales person"}
             />
             <Dropdown
               label="Region"
@@ -490,95 +490,76 @@ const handleSubmit = () => {
           onClick={handleSubmit}
           label={loading ? "Please wait..." : "Initiate POC"}
           type="submit"
-          disabled={loading}
+          disabled={loading || loadingSalesPersons}
         />
       </div>
     );
   };
 
   // Render Confirmation Screen
-  // Render Confirmation Screen
-const renderConfirmation = () => {
-  if (!submittedData) {
+  const renderConfirmation = () => {
+    if (!submittedData) {
+      return (
+        <div className="confirmation-container">
+          <h2>No submission data found</h2>
+          <Button onClick={() => navigateTo('initiate-poc')} label="Back to POC Form" />
+        </div>
+      );
+    }
+
     return (
       <div className="confirmation-container">
-        <h2>No submission data found</h2>
-        <Button onClick={() => navigateTo('initiate-poc')} label="Back to POC Form" />
-      </div>
-    );
-  }
+        <div className="header-bar">
+          <span>Welcome, {currentUser?.username}</span>
+          <div>
+            <button onClick={() => navigateTo('dashboard')} className="nav-btn">Dashboard</button>
+            <button onClick={handleLogout} className="logout-btn">Logout</button>
+          </div>
+        </div>
 
-  return (
-    <div className="confirmation-container">
-      <div className="header-bar">
-        <span>Welcome, {currentUser?.username}</span>
-        <div>
-          <button onClick={() => navigateTo('dashboard')} className="nav-btn">Dashboard</button>
-          <button onClick={handleLogout} className="logout-btn">Logout</button>
+        <h2 className="confirmation-title">✅ POC Created Successfully</h2>
+        
+        <div className="confirmation-table-container">
+          <table className="poc-table">
+            <tbody>
+              <tr><th>ID</th><td>{submittedData.id}</td></tr>
+              <tr><th>Sales Person</th><td>{submittedData.salesPerson}</td></tr>
+              <tr><th>Region</th><td>{submittedData.region}</td></tr>
+              <tr><th>End Customer Type</th><td>{submittedData.endCustomerType}</td></tr>
+              <tr><th>Process Type</th><td>{submittedData.processType}</td></tr>
+              <tr><th>Customer Company</th><td>{submittedData.companyName}</td></tr>
+              <tr><th>Customer SPOC</th><td>{submittedData.spoc}</td></tr>
+              <tr><th>Customer SPOC Email</th><td>{submittedData.spocEmail}</td></tr>
+              <tr><th>Designation</th><td>{submittedData.designation}</td></tr>
+              <tr><th>Mobile</th><td>{submittedData.mobileNumber}</td></tr>
+              <tr><th>Use Case</th><td>{submittedData.usecase}</td></tr>
+              <tr><th>Brief</th><td>{submittedData.brief}</td></tr>
+
+              {submittedData.endCustomerType === "Partner" && (
+                <>
+                  <tr><th>Partner Company</th><td>{submittedData.partnerCompanyName}</td></tr>
+                  <tr><th>Partner SPOC</th><td>{submittedData.partnerSpoc}</td></tr>
+                  <tr><th>Partner SPOC Email</th><td>{submittedData.partnerSpocEmail}</td></tr>
+                  <tr><th>Partner Designation</th><td>{submittedData.partnerDesignation}</td></tr>
+                  <tr><th>Partner Mobile</th><td>{submittedData.partnerMobileNumber}</td></tr>
+                </>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="confirmation-buttons">
+          <Button 
+            onClick={() => {
+              setCurrentView('initiate-poc');
+            }} 
+            label="New POC" 
+          />
+          <Button onClick={() => navigateTo('dashboard')} label="Back to Dashboard" />
         </div>
       </div>
-
-      <h2 className="confirmation-title">✅ POC Created Successfully</h2>
-      
-      <div className="confirmation-table-container">
-        <table className="poc-table">
-          <tbody>
-            <tr><th>ID</th><td>{submittedData.id}</td></tr>
-            <tr><th>Sales Person</th><td>{submittedData.salesPerson}</td></tr>
-            <tr><th>Region</th><td>{submittedData.region}</td></tr>
-            <tr><th>End Customer Type</th><td>{submittedData.endCustomerType}</td></tr>
-            <tr><th>Process Type</th><td>{submittedData.processType}</td></tr>
-            <tr><th>Customer Company</th><td>{submittedData.companyName}</td></tr>
-            <tr><th>Customer SPOC</th><td>{submittedData.spoc}</td></tr>
-            <tr><th>Customer SPOC Email</th><td>{submittedData.spocEmail}</td></tr>
-            <tr><th>Designation</th><td>{submittedData.designation}</td></tr>
-            <tr><th>Mobile</th><td>{submittedData.mobileNumber}</td></tr>
-            <tr><th>Use Case</th><td>{submittedData.usecase}</td></tr>
-            <tr><th>Brief</th><td>{submittedData.brief}</td></tr>
-
-            {submittedData.endCustomerType === "Partner" && (
-              <>
-                <tr><th>Partner Company</th><td>{submittedData.partnerCompanyName}</td></tr>
-                <tr><th>Partner SPOC</th><td>{submittedData.partnerSpoc}</td></tr>
-                <tr><th>Partner SPOC Email</th><td>{submittedData.partnerSpocEmail}</td></tr>
-                <tr><th>Partner Designation</th><td>{submittedData.partnerDesignation}</td></tr>
-                <tr><th>Partner Mobile</th><td>{submittedData.partnerMobileNumber}</td></tr>
-              </>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="confirmation-buttons">
-        <Button 
-          onClick={() => {
-            // Clear the form and go back to POC form
-            setSalesPerson("");
-            setRegion("");
-            setEndCustomerType("");
-            setProcessType("");
-            setCompanyName("");
-            setSpoc("");
-            setSpocEmail("");
-            setDesignation("");
-            setMobileNumber("");
-            setUsecase("");
-            setBrief("");
-            setPartnerCompanyName("");
-            setPartnerSpoc("");
-            setPartnerSpocEmail("");
-            setPartnerDesignation("");
-            setPartnerMobileNumber("");
-            setErrors({});
-            setCurrentView('initiate-poc');
-          }} 
-          label="New POC" 
-        />
-        <Button onClick={() => navigateTo('dashboard')} label="Back to Dashboard" />
-      </div>
-    </div>
-  );
-};
+    );
+  };
 
   return (
     <div className="app">

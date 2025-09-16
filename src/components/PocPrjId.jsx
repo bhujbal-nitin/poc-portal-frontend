@@ -4,10 +4,12 @@ import Dropdown from './DropDown';
 import TextInput from './TextInput';
 import Button from './Button';
 import './PocPrjId.css';
-import companyLogo from '../components/Images/companyLogo.png'; // Import the logo
+import companyLogo from '../components/Images/companyLogo.png';
 import axios from 'axios';
+import { IconButton, Box, Typography, Paper } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 
-const PocPrjId = ({ onBack }) => {
+const PocPrjId = ({ onClose, onSuccess }) => {
     // Form states
     const [pocId, setPocId] = useState('');
     const [pocName, setPocName] = useState('');
@@ -27,23 +29,169 @@ const PocPrjId = ({ onBack }) => {
     const [spocDesignation, setSpocDesignation] = useState('');
     const [tags, setTags] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [apiLoading, setApiLoading] = useState(true);
 
-    // Dropdown options (dummy data - replace with API calls)
+    // Dropdown options
     const [salesPersons, setSalesPersons] = useState([]);
     const [regions, setRegions] = useState([]);
     const [users, setUsers] = useState([]);
+    const [createdByOptions, setCreatedByOptions] = useState([]);
     const [tagOptions, setTagOptions] = useState([]);
 
     // Error states
     const [errors, setErrors] = useState({});
 
-    // Load dropdown data
+    // Function to get username from localStorage
+    const getUsername = () => {
+        // Get user data from localStorage
+        const userData = localStorage.getItem('user');
+        if (userData) {
+            try {
+                const user = JSON.parse(userData);
+                return user.username || user.email || '';
+            } catch (e) {
+                console.error('Error parsing user data:', e);
+                return '';
+            }
+        }
+        return '';
+    };
+
+    // Function to extract name from object with various possible properties
+    const extractName = (item) => {
+        if (typeof item === 'string') return item;
+        if (typeof item === 'object' && item !== null) {
+            return item.fullName || item.name || item.username || item.email || 
+                   `${item.firstName || ''} ${item.lastName || ''}`.trim() ||
+                   Object.values(item).find(val => typeof val === 'string') || '';
+        }
+        return String(item);
+    };
+
+    // Load dropdown data from APIs
     useEffect(() => {
-        // Dummy data - replace with API calls
-        setSalesPersons(['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson']);
-        setRegions(['North America', 'Europe', 'Asia Pacific', 'Middle East', 'Africa']);
-        setUsers(['admin', 'manager', 'developer', 'tester', 'analyst']);
-        setTagOptions(['Urgent', 'High Priority', 'Low Priority', 'Internal', 'External', 'Critical']);
+        const fetchDropdownData = async () => {
+            try {
+                setApiLoading(true);
+                const token = localStorage.getItem('authToken');
+                const username = getUsername();
+
+                // Fetch sales persons from API
+                try {
+                    const salesResponse = await axios.get('http://localhost:5050/poc/getAllSalesPerson', {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+
+                    console.log('Sales Persons API Response:', salesResponse.data);
+
+                    if (salesResponse.data) {
+                        let salesData = salesResponse.data;
+                        
+                        // Handle different response formats
+                        if (Array.isArray(salesData)) {
+                            const salesPersonNames = salesData.map(person => extractName(person)).filter(name => name);
+                            console.log('Processed Sales Persons:', salesPersonNames);
+                            setSalesPersons(salesPersonNames);
+                        } else if (typeof salesData === 'object') {
+                            // If response is an object, check for common structures
+                            if (salesData.data && Array.isArray(salesData.data)) {
+                                const salesPersonNames = salesData.data.map(person => extractName(person)).filter(name => name);
+                                setSalesPersons(salesPersonNames);
+                            } else if (salesData.users && Array.isArray(salesData.users)) {
+                                const salesPersonNames = salesData.users.map(person => extractName(person)).filter(name => name);
+                                setSalesPersons(salesPersonNames);
+                            } else {
+                                // Try to extract array from object values
+                                const values = Object.values(salesData);
+                                if (values.length > 0 && Array.isArray(values[0])) {
+                                    const salesPersonNames = values[0].map(person => extractName(person)).filter(name => name);
+                                    setSalesPersons(salesPersonNames);
+                                } else {
+                                    console.error('Unexpected sales persons data format:', salesData);
+                                    setSalesPersons(['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson']);
+                                }
+                            }
+                        } else {
+                            console.error('Invalid sales persons data format:', salesData);
+                            setSalesPersons(['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson']);
+                        }
+                    } else {
+                        console.error('Empty sales persons response');
+                        setSalesPersons(['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson']);
+                    }
+                } catch (salesError) {
+                    console.error('Error fetching sales persons:', salesError);
+                    setSalesPersons(['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson']);
+                }
+
+                // Fetch Created By options from API with username parameter
+                if (username) {
+                    try {
+                        const createdByResponse = await axios.get(`http://localhost:5050/poc/getCreatedBy?username=${encodeURIComponent(username)}`, {
+                            headers: {
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+
+                        console.log('Created By API Response:', createdByResponse.data);
+                        
+                        let createdByData = [];
+                        
+                        if (createdByResponse.data) {
+                            if (Array.isArray(createdByResponse.data)) {
+                                createdByData = createdByResponse.data.map(item => extractName(item)).filter(name => name);
+                            } else if (typeof createdByResponse.data === 'object') {
+                                const data = createdByResponse.data;
+                                
+                                // Check for common response structures
+                                if (data.users && Array.isArray(data.users)) {
+                                    createdByData = data.users.map(item => extractName(item)).filter(name => name);
+                                } else if (data.data && Array.isArray(data.data)) {
+                                    createdByData = data.data.map(item => extractName(item)).filter(name => name);
+                                } else if (data.createdBy && Array.isArray(data.createdBy)) {
+                                    createdByData = data.createdBy.map(item => extractName(item)).filter(name => name);
+                                } else {
+                                    // Try to extract all values that could be names
+                                    const allValues = Object.values(data).flat();
+                                    createdByData = allValues.map(item => extractName(item)).filter(name => name);
+                                }
+                            } else if (typeof createdByResponse.data === 'string') {
+                                createdByData = [createdByResponse.data];
+                            }
+                        }
+                        
+                        console.log('Processed Created By Data:', createdByData);
+                        setCreatedByOptions(createdByData.length > 0 ? createdByData : [username]);
+                    } catch (createdByError) {
+                        console.error('Error fetching created by options:', createdByError);
+                        setCreatedByOptions([username]);
+                    }
+                } else {
+                    console.warn('Username not found. Using default options.');
+                    setCreatedByOptions(['admin', 'manager', 'user']);
+                }
+
+                // Load other dropdown data
+                setRegions(['ROW', 'ISSARC', 'America', 'Other']);
+                setUsers(['admin', 'manager', 'developer', 'tester', 'analyst']);
+                setTagOptions(['GenAI', 'Agentic AI', 'SAP', 'RPA', 'Chatbot', 'DodEdge', 'Mainframe', 'Other']);
+
+            } catch (error) {
+                console.error('Error fetching dropdown data:', error);
+                // Fallback to dummy data if API fails
+                setSalesPersons(['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson']);
+                setRegions(['ROW', 'ISSARC', 'America', 'Other']);
+                setUsers(['admin', 'manager', 'developer', 'tester', 'analyst']);
+                setCreatedByOptions(['admin', 'manager', 'user']);
+                setTagOptions(['GenAI', 'Agentic AI', 'SAP', 'RPA', 'Chatbot', 'DodEdge', 'Mainframe', 'Other']);
+            } finally {
+                setApiLoading(false);
+            }
+        };
+
+        fetchDropdownData();
     }, []);
 
     const handleSubmit = async (e) => {
@@ -69,7 +217,7 @@ const PocPrjId = ({ onBack }) => {
 
         if (Object.keys(newErrors).length === 0) {
             setLoading(true);
-            
+
             try {
                 // Prepare form data for database
                 const formData = {
@@ -89,12 +237,12 @@ const PocPrjId = ({ onBack }) => {
                     pocType,
                     spocEmail,
                     spocDesignation,
-                    tags: tags.join(',') // Convert array to comma-separated string for database
+                    tags: tags.join(',')
                 };
 
                 // Get authentication token
                 const token = localStorage.getItem('authToken');
-                
+
                 // Make API call to save the data
                 const response = await axios.post('http://localhost:5050/poc/savepocprjid', formData, {
                     headers: {
@@ -105,8 +253,10 @@ const PocPrjId = ({ onBack }) => {
 
                 if (response.data.success) {
                     alert('POC Code created successfully!');
-                    // Reset form after successful submission
                     resetForm();
+                    if (onSuccess) {
+                        onSuccess();
+                    }
                 } else {
                     alert('Failed to create POC Code: ' + response.data.message);
                 }
@@ -114,7 +264,6 @@ const PocPrjId = ({ onBack }) => {
                 console.error('Error saving POC Code:', error);
                 if (error.response?.status === 401) {
                     alert('Session expired. Please login again.');
-                    // Handle logout or redirect to login
                 } else {
                     alert('Error saving POC Code. Please try again.');
                 }
@@ -148,7 +297,6 @@ const PocPrjId = ({ onBack }) => {
     const handleTagSelect = (tag) => {
         if (!tags.includes(tag)) {
             setTags([...tags, tag]);
-            // Clear tag error when a tag is selected
             if (errors.tags) {
                 setErrors({ ...errors, tags: null });
             }
@@ -160,23 +308,35 @@ const PocPrjId = ({ onBack }) => {
     };
 
     return (
-        <div className="poc-prj-container">
-            <div className="header-bar">
-                <div className="logo-title-container">
-                    <img 
-                        src={companyLogo} 
-                        alt="Company Logo" 
-                        className="header-logo"
+        <Box sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
+            {/* Header with close button */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <img
+                        src={companyLogo}
+                        alt="Company Logo"
+                        style={{ height: '40px' }}
                     />
-                    <h2>POC Code Creation</h2>
-                </div>
-                <button onClick={onBack} className="back-btn">Back to Dashboard</button>
-            </div>
+                    <Typography variant="h5" component="h2">
+                        POC Code Creation
+                    </Typography>
+                </Box>
+                <IconButton onClick={onClose} aria-label="close">
+                    <CloseIcon />
+                </IconButton>
+            </Box>
 
-            <div className="poc-prj-content">
+            {/* Form content */}
+            <Paper sx={{ p: 3, flex: 1, overflow: 'auto' }}>
                 <form onSubmit={handleSubmit} className="poc-prj-form">
                     <div className="form-section">
                         <h3>Add New POC ID</h3>
+
+                        {apiLoading && (
+                            <div style={{ textAlign: 'center', padding: '10px', color: '#666' }}>
+                                Loading data...
+                            </div>
+                        )}
 
                         <div className="form-row">
                             <TextInput
@@ -228,6 +388,7 @@ const PocPrjId = ({ onBack }) => {
                                 error={errors.salesPerson}
                                 placeholder="Choose Sales Person"
                                 required
+                                loading={apiLoading}
                             />
 
                             <TextInput
@@ -253,12 +414,13 @@ const PocPrjId = ({ onBack }) => {
 
                             <Dropdown
                                 label="Created By: "
-                                options={users}
+                                options={createdByOptions}
                                 value={createdBy}
                                 onChange={setCreatedBy}
                                 error={errors.createdBy}
                                 placeholder="Select Creator"
                                 required
+                                loading={apiLoading}
                             />
                         </div>
 
@@ -282,7 +444,7 @@ const PocPrjId = ({ onBack }) => {
                                     onChange={(e) => setEndDate(e.target.value)}
                                     className={errors.endDate ? 'error' : ''}
                                 />
-                                {errors.endDate && <span className="error-text">{errors.endDate}</span>}
+                                {errors.endDate && <span className='error-text'>{errors.endDate}</span>}
                             </div>
                         </div>
 
@@ -320,7 +482,21 @@ const PocPrjId = ({ onBack }) => {
 
                             <Dropdown
                                 label="POC Type: "
-                                options={['Technical', 'Commercial', 'Strategic', 'Trial']}
+                                options={[
+                                    'POC',
+                                    'POP',
+                                    'Partner Support',
+                                    'Feasibility Check',
+                                    'Operational Support',
+                                    'R&D',
+                                    'Solution Consultation',
+                                    'Efforts Estimation',
+                                    'Task',
+                                    'Demo',
+                                    'Internal',
+                                    'Event',
+                                    'Workshop'
+                                ]}
                                 value={pocType}
                                 onChange={setPocType}
                                 error={errors.pocType}
@@ -369,28 +545,27 @@ const PocPrjId = ({ onBack }) => {
                                 {errors.tags && <span className="error-text">{errors.tags}</span>}
                             </div>
 
-                            {/* Empty div to maintain 2-column layout */}
                             <div></div>
                         </div>
 
                         <div className="form-actions">
-                            <Button 
-                                type="submit" 
-                                label={loading ? "Saving..." : "Submit"} 
-                                disabled={loading}
+                            <Button
+                                type="submit"
+                                label={loading ? "Saving..." : "Submit"}
+                                disabled={loading || apiLoading}
                             />
-                            <Button 
-                                type="button" 
-                                label="I'm done!" 
-                                variant="secondary" 
-                                onClick={onBack} 
+                            <Button
+                                type="button"
+                                label="Cancel"
+                                variant="secondary"
+                                onClick={onClose}
                                 disabled={loading}
                             />
                         </div>
                     </div>
                 </form>
-            </div>
-        </div>
+            </Paper>
+        </Box>
     );
 };
 
