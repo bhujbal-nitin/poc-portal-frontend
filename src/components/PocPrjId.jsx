@@ -68,6 +68,43 @@ const PocPrjId = ({ onClose, onSuccess }) => {
         return String(item);
     };
 
+    // Function to process API response data into dropdown options
+    const processApiData = (data) => {
+        if (!data) return [];
+        
+        let processedData = [];
+        
+        // Handle different response formats
+        if (Array.isArray(data)) {
+            processedData = data.map(item => extractName(item)).filter(name => name);
+        } else if (typeof data === 'object') {
+            // Check for common response structures
+            if (data.data && Array.isArray(data.data)) {
+                processedData = data.data.map(item => extractName(item)).filter(name => name);
+            } else if (data.users && Array.isArray(data.users)) {
+                processedData = data.users.map(item => extractName(item)).filter(name => name);
+            } else if (data.assignTo && Array.isArray(data.assignTo)) {
+                processedData = data.assignTo.map(item => extractName(item)).filter(name => name);
+            } else {
+                // Try to extract array from object values
+                const values = Object.values(data);
+                if (values.length > 0 && Array.isArray(values[0])) {
+                    processedData = values[0].map(item => extractName(item)).filter(name => name);
+                } else {
+                    // Try to extract all string values from the object
+                    const stringValues = Object.values(data).filter(
+                        value => typeof value === 'string' && value.trim() !== ''
+                    );
+                    processedData = stringValues;
+                }
+            }
+        } else if (typeof data === 'string') {
+            processedData = [data];
+        }
+        
+        return processedData;
+    };
+
     // Load dropdown data from APIs
     useEffect(() => {
         const fetchDropdownData = async () => {
@@ -85,45 +122,29 @@ const PocPrjId = ({ onClose, onSuccess }) => {
                     });
 
                     console.log('Sales Persons API Response:', salesResponse.data);
-
-                    if (salesResponse.data) {
-                        let salesData = salesResponse.data;
-                        
-                        // Handle different response formats
-                        if (Array.isArray(salesData)) {
-                            const salesPersonNames = salesData.map(person => extractName(person)).filter(name => name);
-                            console.log('Processed Sales Persons:', salesPersonNames);
-                            setSalesPersons(salesPersonNames);
-                        } else if (typeof salesData === 'object') {
-                            // If response is an object, check for common structures
-                            if (salesData.data && Array.isArray(salesData.data)) {
-                                const salesPersonNames = salesData.data.map(person => extractName(person)).filter(name => name);
-                                setSalesPersons(salesPersonNames);
-                            } else if (salesData.users && Array.isArray(salesData.users)) {
-                                const salesPersonNames = salesData.users.map(person => extractName(person)).filter(name => name);
-                                setSalesPersons(salesPersonNames);
-                            } else {
-                                // Try to extract array from object values
-                                const values = Object.values(salesData);
-                                if (values.length > 0 && Array.isArray(values[0])) {
-                                    const salesPersonNames = values[0].map(person => extractName(person)).filter(name => name);
-                                    setSalesPersons(salesPersonNames);
-                                } else {
-                                    console.error('Unexpected sales persons data format:', salesData);
-                                    setSalesPersons(['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson']);
-                                }
-                            }
-                        } else {
-                            console.error('Invalid sales persons data format:', salesData);
-                            setSalesPersons(['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson']);
-                        }
-                    } else {
-                        console.error('Empty sales persons response');
-                        setSalesPersons(['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson']);
-                    }
+                    const salesData = processApiData(salesResponse.data);
+                    console.log('Processed Sales Persons:', salesData);
+                    setSalesPersons(salesData.length > 0 ? salesData : ['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson']);
                 } catch (salesError) {
                     console.error('Error fetching sales persons:', salesError);
                     setSalesPersons(['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson']);
+                }
+
+                // Fetch Assigned To options from API
+                try {
+                    const assignToResponse = await axios.get('http://localhost:5050/poc/getAllAssignTo', {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+
+                    console.log('Assigned To API Response:', assignToResponse.data);
+                    const assignToData = processApiData(assignToResponse.data);
+                    console.log('Processed Assigned To Data:', assignToData);
+                    setUsers(assignToData.length > 0 ? assignToData : ['admin', 'manager', 'developer', 'tester', 'analyst']);
+                } catch (assignToError) {
+                    console.error('Error fetching assigned to options:', assignToError);
+                    setUsers(['admin', 'manager', 'developer', 'tester', 'analyst']);
                 }
 
                 // Fetch Created By options from API with username parameter
@@ -136,32 +157,7 @@ const PocPrjId = ({ onClose, onSuccess }) => {
                         });
 
                         console.log('Created By API Response:', createdByResponse.data);
-                        
-                        let createdByData = [];
-                        
-                        if (createdByResponse.data) {
-                            if (Array.isArray(createdByResponse.data)) {
-                                createdByData = createdByResponse.data.map(item => extractName(item)).filter(name => name);
-                            } else if (typeof createdByResponse.data === 'object') {
-                                const data = createdByResponse.data;
-                                
-                                // Check for common response structures
-                                if (data.users && Array.isArray(data.users)) {
-                                    createdByData = data.users.map(item => extractName(item)).filter(name => name);
-                                } else if (data.data && Array.isArray(data.data)) {
-                                    createdByData = data.data.map(item => extractName(item)).filter(name => name);
-                                } else if (data.createdBy && Array.isArray(data.createdBy)) {
-                                    createdByData = data.createdBy.map(item => extractName(item)).filter(name => name);
-                                } else {
-                                    // Try to extract all values that could be names
-                                    const allValues = Object.values(data).flat();
-                                    createdByData = allValues.map(item => extractName(item)).filter(name => name);
-                                }
-                            } else if (typeof createdByResponse.data === 'string') {
-                                createdByData = [createdByResponse.data];
-                            }
-                        }
-                        
+                        const createdByData = processApiData(createdByResponse.data);
                         console.log('Processed Created By Data:', createdByData);
                         setCreatedByOptions(createdByData.length > 0 ? createdByData : [username]);
                     } catch (createdByError) {
@@ -175,7 +171,6 @@ const PocPrjId = ({ onClose, onSuccess }) => {
 
                 // Load other dropdown data
                 setRegions(['ROW', 'ISSARC', 'America', 'Other']);
-                setUsers(['admin', 'manager', 'developer', 'tester', 'analyst']);
                 setTagOptions(['GenAI', 'Agentic AI', 'SAP', 'RPA', 'Chatbot', 'DodEdge', 'Mainframe', 'Other']);
 
             } catch (error) {
@@ -201,8 +196,8 @@ const PocPrjId = ({ onClose, onSuccess }) => {
         const newErrors = {};
         if (!pocId) newErrors.pocId = 'POC/Project ID is required';
         if (!pocName) newErrors.pocName = 'POC/Project Name is required';
-        if (!entityType) newErrors.entityType = 'Entity Type is required';
-        if (!entityName) newErrors.entityName = 'Entity Name is required';
+        if (!entityType) newErrors.entityType = 'Client Type is required';
+        if (!entityName) newErrors.entityName = 'Company Name is required';
         if (!salesPerson) newErrors.salesPerson = 'Sales Person is required';
         if (!assignedTo) newErrors.assignedTo = 'Assigned To is required';
         if (!createdBy) newErrors.createdBy = 'Created By is required';
@@ -365,7 +360,7 @@ const PocPrjId = ({ onClose, onSuccess }) => {
                                 value={entityType}
                                 onChange={setEntityType}
                                 error={errors.entityType}
-                                placeholder="Select Entity Type"
+                                placeholder="Select Client Type"
                                 required
                             />
 
@@ -410,6 +405,7 @@ const PocPrjId = ({ onClose, onSuccess }) => {
                                 error={errors.assignedTo}
                                 placeholder="Select Assignee"
                                 required
+                                loading={apiLoading}
                             />
 
                             <Dropdown

@@ -26,7 +26,9 @@ import {
     DialogContent,
     DialogActions,
     Typography as MuiTypography,
-    Tooltip
+    Tooltip,
+    Snackbar,
+    Alert
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -43,6 +45,9 @@ const PocTable = ({ onNavigate, onLogout, user }) => {
     const [searchTerm, setSearchTerm] = React.useState('');
     const [selectedPoc, setSelectedPoc] = React.useState(null);
     const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
+    const [pocToDelete, setPocToDelete] = React.useState(null);
+    const [snackbar, setSnackbar] = React.useState({ open: false, message: '', severity: 'success' });
 
     const handleOpen = () => setOpen(true);
     const handleClose = () => setOpen(false);
@@ -60,7 +65,7 @@ const PocTable = ({ onNavigate, onLogout, user }) => {
             setPocData(response.data);
         } catch (error) {
             console.error('Error fetching POC data:', error);
-            alert('Failed to fetch POC data');
+            showSnackbar('Failed to fetch POC data', 'error');
         } finally {
             setLoading(false);
         }
@@ -89,7 +94,9 @@ const PocTable = ({ onNavigate, onLogout, user }) => {
         poc.entityType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         poc.assignedTo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         poc.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        poc.tags?.toLowerCase().includes(searchTerm.toLowerCase())
+        poc.tags?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        poc.approvedBy?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        poc.status?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const paginatedData = filteredData.slice(
@@ -105,6 +112,47 @@ const PocTable = ({ onNavigate, onLogout, user }) => {
     const handleCloseDetails = () => {
         setDetailDialogOpen(false);
         setSelectedPoc(null);
+    };
+
+    const handleDeleteClick = (poc) => {
+        setPocToDelete(poc);
+        setDeleteConfirmOpen(true);
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!pocToDelete) return;
+
+        try {
+            const token = localStorage.getItem('authToken');
+            await axios.delete(`http://localhost:5050/poc/delete/${pocToDelete.pocId}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            // Remove the deleted item from local state
+            setPocData(prevData => prevData.filter(item => item.pocId !== pocToDelete.pocId));
+            showSnackbar('POC record deleted successfully', 'success');
+        } catch (error) {
+            console.error('Error deleting POC:', error);
+            showSnackbar('Failed to delete POC record', 'error');
+        } finally {
+            setDeleteConfirmOpen(false);
+            setPocToDelete(null);
+        }
+    };
+
+    const handleDeleteCancel = () => {
+        setDeleteConfirmOpen(false);
+        setPocToDelete(null);
+    };
+
+    const showSnackbar = (message, severity) => {
+        setSnackbar({ open: true, message, severity });
+    };
+
+    const handleCloseSnackbar = () => {
+        setSnackbar({ ...snackbar, open: false });
     };
 
     // Style for the modal
@@ -153,6 +201,11 @@ const PocTable = ({ onNavigate, onLogout, user }) => {
         return text.substring(0, maxLength) + '...';
     };
 
+    const formatNumber = (number) => {
+        if (number === null || number === undefined) return '-';
+        return number.toString();
+    };
+
     return (
         <Box sx={{ flexGrow: 1 }}>
             <AppBar position="static">
@@ -187,16 +240,15 @@ const PocTable = ({ onNavigate, onLogout, user }) => {
             </AppBar>
 
             {/* Modal for PocPrjId */}
-      
             <Modal
                 open={open}
-                onClose={handleClose}  // Add this line to handle backdrop clicks
+                onClose={handleClose}
                 aria-labelledby="poc-creation-modal"
                 aria-describedby="poc-creation-form"
             >
                 <Box sx={modalStyle}>
                     <PocPrjId
-                        onClose={handleClose}  // Pass the close function
+                        onClose={handleClose}
                         onSuccess={() => {
                             handleClose();
                             fetchPocData();
@@ -213,8 +265,8 @@ const PocTable = ({ onNavigate, onLogout, user }) => {
                         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
                             <DetailItem label="POC ID" value={selectedPoc.pocId} />
                             <DetailItem label="POC Name" value={selectedPoc.pocName} />
-                            <DetailItem label="Entity Type" value={selectedPoc.entityType} />
-                            <DetailItem label="Entity Name" value={selectedPoc.entityName} />
+                            <DetailItem label="Client Type" value={selectedPoc.entityType} />
+                            <DetailItem label="Company Name" value={selectedPoc.entityName} />
                             <DetailItem label="Sales Person" value={selectedPoc.salesPerson} />
                             <DetailItem label="Region" value={selectedPoc.region} />
                             <DetailItem label="Billable" value={selectedPoc.isBillable ? 'Yes' : 'No'} />
@@ -223,6 +275,12 @@ const PocTable = ({ onNavigate, onLogout, user }) => {
                             <DetailItem label="Created By" value={selectedPoc.createdBy} />
                             <DetailItem label="Start Date" value={formatDate(selectedPoc.startDate)} />
                             <DetailItem label="End Date" value={formatDate(selectedPoc.endDate)} />
+                            <DetailItem label="Actual Start Date" value={formatDate(selectedPoc.actualStartDate)} />
+                            <DetailItem label="Actual End Date" value={formatDate(selectedPoc.actualEndDate)} />
+                            <DetailItem label="Estimated Efforts" value={formatNumber(selectedPoc.estimatedEfforts)} />
+                            <DetailItem label="Total Efforts" value={formatNumber(selectedPoc.totalEfforts)} />
+                            <DetailItem label="Variance Days" value={formatNumber(selectedPoc.varianceDays)} />
+                            <DetailItem label="Approved By" value={selectedPoc.approvedBy || '-'} />
                             <DetailItem label="SPOC Email" value={selectedPoc.spocEmail || '-'} />
                             <DetailItem label="SPOC Designation" value={selectedPoc.spocDesignation || '-'} />
                             <DetailItem label="Tags" value={selectedPoc.tags || '-'} />
@@ -236,6 +294,37 @@ const PocTable = ({ onNavigate, onLogout, user }) => {
                     <Button onClick={handleCloseDetails}>Close</Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={deleteConfirmOpen} onClose={handleDeleteCancel}>
+                <DialogTitle>Confirm Delete</DialogTitle>
+                <DialogContent>
+                    <Typography>
+                        Are you sure you want to delete POC <strong>{pocToDelete?.pocId}</strong> - {pocToDelete?.pocName}?
+                    </Typography>
+                    <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                        This action cannot be undone.
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleDeleteCancel}>Cancel</Button>
+                    <Button onClick={handleDeleteConfirm} color="error" variant="contained">
+                        Delete
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Snackbar for notifications */}
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={3000}
+                onClose={handleCloseSnackbar}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+            >
+                <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }}>
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
 
             {/* Main content */}
             <Box sx={{ p: 3 }}>
@@ -266,19 +355,25 @@ const PocTable = ({ onNavigate, onLogout, user }) => {
                 ) : (
                     <>
                         <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 200px)', overflowX: 'auto' }}>
-                            <Table stickyHeader sx={{ minWidth: 1800 }} aria-label="poc table">
+                            <Table stickyHeader sx={{ minWidth: 2400 }} aria-label="poc table">
                                 <TableHead>
                                     <TableRow>
                                         <TableCell><strong>POC ID</strong></TableCell>
                                         <TableCell><strong>Project Name</strong></TableCell>
-                                        <TableCell><strong>Entity Type</strong></TableCell>
-                                        <TableCell><strong>Entity Name</strong></TableCell>
+                                        <TableCell><strong>Client Type</strong></TableCell>
+                                        <TableCell><strong>Company Name</strong></TableCell>
                                         <TableCell><strong>Sales Person</strong></TableCell>
                                         <TableCell><strong>Description</strong></TableCell>
                                         <TableCell><strong>Assigned To</strong></TableCell>
                                         <TableCell><strong>Created By</strong></TableCell>
                                         <TableCell><strong>Start Date</strong></TableCell>
                                         <TableCell><strong>End Date</strong></TableCell>
+                                        <TableCell><strong>Actual Start Date</strong></TableCell>
+                                        <TableCell><strong>Actual End Date</strong></TableCell>
+                                        <TableCell><strong>Estimated Efforts</strong></TableCell>
+                                        <TableCell><strong>Total Efforts</strong></TableCell>
+                                        <TableCell><strong>Variance Days</strong></TableCell>
+                                        <TableCell><strong>Approved By</strong></TableCell>
                                         <TableCell><strong>Remark</strong></TableCell>
                                         <TableCell><strong>Region</strong></TableCell>
                                         <TableCell><strong>Billable</strong></TableCell>
@@ -293,7 +388,7 @@ const PocTable = ({ onNavigate, onLogout, user }) => {
                                 <TableBody>
                                     {paginatedData.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={19} align="center" sx={{ py: 3 }}>
+                                            <TableCell colSpan={25} align="center" sx={{ py: 3 }}>
                                                 <Typography variant="body1" color="textSecondary">
                                                     {searchTerm ? 'No matching POC codes found' : 'No POC codes available. Click "Create POC" to get started.'}
                                                 </Typography>
@@ -316,6 +411,12 @@ const PocTable = ({ onNavigate, onLogout, user }) => {
                                                 <TableCell>{poc.createdBy}</TableCell>
                                                 <TableCell>{formatDate(poc.startDate)}</TableCell>
                                                 <TableCell>{formatDate(poc.endDate)}</TableCell>
+                                                <TableCell>{formatDate(poc.actualStartDate)}</TableCell>
+                                                <TableCell>{formatDate(poc.actualEndDate)}</TableCell>
+                                                <TableCell>{formatNumber(poc.estimatedEfforts)}</TableCell>
+                                                <TableCell>{formatNumber(poc.totalEfforts)}</TableCell>
+                                                <TableCell>{formatNumber(poc.varianceDays)}</TableCell>
+                                                <TableCell>{poc.approvedBy || '-'}</TableCell>
                                                 <TableCell>
                                                     <Tooltip title={poc.remark || '-'}>
                                                         <span>{truncateText(poc.remark, 15)}</span>
@@ -354,7 +455,12 @@ const PocTable = ({ onNavigate, onLogout, user }) => {
                                                     <IconButton size="small" color="secondary" title="Edit">
                                                         <EditIcon />
                                                     </IconButton>
-                                                    <IconButton size="small" color="error" title="Delete">
+                                                    <IconButton
+                                                        size="small"
+                                                        color="error"
+                                                        title="Delete"
+                                                        onClick={() => handleDeleteClick(poc)}
+                                                    >
                                                         <DeleteIcon />
                                                     </IconButton>
                                                 </TableCell>
