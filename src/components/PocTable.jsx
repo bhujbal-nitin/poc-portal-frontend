@@ -36,8 +36,12 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import axios from 'axios';
 
+// Import the edit form component
+import PocPrjIdEdit from './PocPrjIdEdit';
+
 const PocTable = ({ onNavigate, onLogout, user }) => {
     const [open, setOpen] = React.useState(false);
+    const [editOpen, setEditOpen] = React.useState(false);
     const [pocData, setPocData] = React.useState([]);
     const [loading, setLoading] = React.useState(true);
     const [page, setPage] = React.useState(0);
@@ -47,10 +51,19 @@ const PocTable = ({ onNavigate, onLogout, user }) => {
     const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
     const [pocToDelete, setPocToDelete] = React.useState(null);
+    const [pocToEdit, setPocToEdit] = React.useState(null);
     const [snackbar, setSnackbar] = React.useState({ open: false, message: '', severity: 'success' });
 
     const handleOpen = () => setOpen(true);
     const handleClose = () => setOpen(false);
+    const handleEditOpen = (poc) => {
+        setPocToEdit(poc);
+        setEditOpen(true);
+    };
+    const handleEditClose = () => {
+        setEditOpen(false);
+        setPocToEdit(null);
+    };
 
     // Fetch POC data
     const fetchPocData = async () => {
@@ -257,6 +270,26 @@ const PocTable = ({ onNavigate, onLogout, user }) => {
                 </Box>
             </Modal>
 
+            {/* Modal for PocPrjIdEdit */}
+            <Modal
+                open={editOpen}
+                onClose={handleEditClose}
+                aria-labelledby="poc-edit-modal"
+                aria-describedby="poc-edit-form"
+            >
+                <Box sx={modalStyle}>
+                    <PocPrjIdEdit
+                        poc={pocToEdit}
+                        onClose={handleEditClose}
+                        onSuccess={() => {
+                            handleEditClose();
+                            fetchPocData();
+                            showSnackbar('POC record updated successfully', 'success');
+                        }}
+                    />
+                </Box>
+            </Modal>
+
             {/* Detail Dialog */}
             <Dialog open={detailDialogOpen} onClose={handleCloseDetails} maxWidth="md" fullWidth>
                 <DialogTitle>POC Details - {selectedPoc?.pocId}</DialogTitle>
@@ -452,7 +485,12 @@ const PocTable = ({ onNavigate, onLogout, user }) => {
                                                     >
                                                         <VisibilityIcon />
                                                     </IconButton>
-                                                    <IconButton size="small" color="secondary" title="Edit">
+                                                    <IconButton 
+                                                        size="small" 
+                                                        color="secondary" 
+                                                        title="Edit"
+                                                        onClick={() => handleEditOpen(poc)}
+                                                    >
                                                         <EditIcon />
                                                     </IconButton>
                                                     <IconButton
