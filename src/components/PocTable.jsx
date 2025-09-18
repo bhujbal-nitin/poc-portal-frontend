@@ -75,7 +75,9 @@ const PocTable = ({ onNavigate, onLogout, user }) => {
                     'Authorization': `Bearer ${token}`
                 }
             });
-            setPocData(response.data);
+
+            // Reverse the array to show newest first
+            setPocData([...response.data].reverse());
         } catch (error) {
             console.error('Error fetching POC data:', error);
             showSnackbar('Failed to fetch POC data', 'error');
@@ -297,13 +299,17 @@ const PocTable = ({ onNavigate, onLogout, user }) => {
                     {selectedPoc && (
                         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
                             <DetailItem label="POC ID" value={selectedPoc.pocId} />
-                            <DetailItem label="POC Name" value={selectedPoc.pocName} />
+                            <DetailItem label="Project Name" value={selectedPoc.pocName} />
+                            <DetailItem label="Description" value={selectedPoc.description || '-'} />
                             <DetailItem label="Client Type" value={selectedPoc.entityType} />
+                            <DetailItem label="POC Type" value={selectedPoc.pocType} />
                             <DetailItem label="Company Name" value={selectedPoc.entityName} />
                             <DetailItem label="Sales Person" value={selectedPoc.salesPerson} />
                             <DetailItem label="Region" value={selectedPoc.region} />
+                            <DetailItem label="SPOC Email" value={selectedPoc.spocEmail || '-'} />
+                            <DetailItem label="SPOC Designation" value={selectedPoc.spocDesignation || '-'} />
                             <DetailItem label="Billable" value={selectedPoc.isBillable ? 'Yes' : 'No'} />
-                            <DetailItem label="POC Type" value={selectedPoc.pocType} />
+                            <DetailItem label="Tags" value={selectedPoc.tags || '-'} />
                             <DetailItem label="Assigned To" value={selectedPoc.assignedTo} />
                             <DetailItem label="Created By" value={selectedPoc.createdBy} />
                             <DetailItem label="Start Date" value={formatDate(selectedPoc.startDate)} />
@@ -311,13 +317,9 @@ const PocTable = ({ onNavigate, onLogout, user }) => {
                             <DetailItem label="Actual Start Date" value={formatDate(selectedPoc.actualStartDate)} />
                             <DetailItem label="Actual End Date" value={formatDate(selectedPoc.actualEndDate)} />
                             <DetailItem label="Estimated Efforts" value={formatNumber(selectedPoc.estimatedEfforts)} />
+                            <DetailItem label="Approved By" value={selectedPoc.approvedBy || '-'} />
                             <DetailItem label="Total Efforts" value={formatNumber(selectedPoc.totalEfforts)} />
                             <DetailItem label="Variance Days" value={formatNumber(selectedPoc.varianceDays)} />
-                            <DetailItem label="Approved By" value={selectedPoc.approvedBy || '-'} />
-                            <DetailItem label="SPOC Email" value={selectedPoc.spocEmail || '-'} />
-                            <DetailItem label="SPOC Designation" value={selectedPoc.spocDesignation || '-'} />
-                            <DetailItem label="Tags" value={selectedPoc.tags || '-'} />
-                            <DetailItem label="Description" value={selectedPoc.description || '-'} />
                             <DetailItem label="Remark" value={selectedPoc.remark || '-'} />
                             <DetailItem label="Status" value={selectedPoc.status || 'Draft'} />
                         </Box>
@@ -387,127 +389,145 @@ const PocTable = ({ onNavigate, onLogout, user }) => {
                     <Typography>Loading POC data...</Typography>
                 ) : (
                     <>
-                        <TableContainer component={Paper} sx={{ maxHeight: 'calc(100vh - 200px)', overflowX: 'auto' }}>
-                            <Table stickyHeader sx={{ minWidth: 2400 }} aria-label="poc table">
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell><strong>POC ID</strong></TableCell>
-                                        <TableCell><strong>Project Name</strong></TableCell>
-                                        <TableCell><strong>Client Type</strong></TableCell>
-                                        <TableCell><strong>Company Name</strong></TableCell>
-                                        <TableCell><strong>Sales Person</strong></TableCell>
-                                        <TableCell><strong>Description</strong></TableCell>
-                                        <TableCell><strong>Assigned To</strong></TableCell>
-                                        <TableCell><strong>Created By</strong></TableCell>
-                                        <TableCell><strong>Start Date</strong></TableCell>
-                                        <TableCell><strong>End Date</strong></TableCell>
-                                        <TableCell><strong>Actual Start Date</strong></TableCell>
-                                        <TableCell><strong>Actual End Date</strong></TableCell>
-                                        <TableCell><strong>Estimated Efforts</strong></TableCell>
-                                        <TableCell><strong>Total Efforts</strong></TableCell>
-                                        <TableCell><strong>Variance Days</strong></TableCell>
-                                        <TableCell><strong>Approved By</strong></TableCell>
-                                        <TableCell><strong>Remark</strong></TableCell>
-                                        <TableCell><strong>Region</strong></TableCell>
-                                        <TableCell><strong>Billable</strong></TableCell>
-                                        <TableCell><strong>POC Type</strong></TableCell>
-                                        <TableCell><strong>SPOC Email</strong></TableCell>
-                                        <TableCell><strong>SPOC Designation</strong></TableCell>
-                                        <TableCell><strong>Tags</strong></TableCell>
-                                        <TableCell><strong>Status</strong></TableCell>
-                                        <TableCell><strong>Actions</strong></TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {paginatedData.length === 0 ? (
+                        <Box sx={{
+                            width: '100%',
+                            overflow: 'hidden',
+                            border: '1px solid #e0e0e0',
+                            borderRadius: '4px'
+                        }}>
+                            {/* Single Table Container with unified scroll */}
+                            <TableContainer component={Paper} sx={{
+                                maxHeight: 'calc(100vh - 200px)',
+                                boxShadow: 'none',
+                                borderRadius: 0
+                            }}>
+                                <Table stickyHeader sx={{ minWidth: 2400 }} aria-label="poc table">
+                                    <TableHead>
                                         <TableRow>
-                                            <TableCell colSpan={25} align="center" sx={{ py: 3 }}>
-                                                <Typography variant="body1" color="textSecondary">
-                                                    {searchTerm ? 'No matching POC codes found' : 'No POC codes available. Click "Create POC" to get started.'}
-                                                </Typography>
-                                            </TableCell>
+                                            {/* Left side columns */}
+                                            <TableCell sx={{ minWidth: 120, height: '53px' }}><strong>POC ID</strong></TableCell>
+                                            <TableCell sx={{ minWidth: 150, height: '53px' }}><strong>Project Name</strong></TableCell>
+                                            <TableCell sx={{ minWidth: 150, height: '53px' }}><strong>Description</strong></TableCell>
+                                            <TableCell sx={{ minWidth: 120, height: '53px' }}><strong>Client Type</strong></TableCell>
+                                            <TableCell sx={{ minWidth: 120, height: '53px' }}><strong>POC Type</strong></TableCell>
+                                            <TableCell sx={{ minWidth: 150, height: '53px' }}><strong>Company Name</strong></TableCell>
+                                            <TableCell sx={{ minWidth: 150, height: '53px' }}><strong>Sales Person</strong></TableCell>
+                                            <TableCell sx={{ minWidth: 120, height: '53px' }}><strong>Region</strong></TableCell>
+                                            <TableCell sx={{ minWidth: 150, height: '53px' }}><strong>SPOC Email</strong></TableCell>
+                                            <TableCell sx={{ minWidth: 150, height: '53px' }}><strong>SPOC Designation</strong></TableCell>
+                                            <TableCell sx={{ minWidth: 100, height: '53px' }}><strong>Billable</strong></TableCell>
+                                            <TableCell sx={{ minWidth: 120, height: '53px' }}><strong>Tags</strong></TableCell>
+                                            <TableCell sx={{ minWidth: 150, height: '53px' }}><strong>Assigned To</strong></TableCell>
+                                            <TableCell sx={{ minWidth: 150, height: '53px' }}><strong>Created By</strong></TableCell>
+                                            <TableCell sx={{ minWidth: 120, height: '53px' }}><strong>Start Date</strong></TableCell>
+                                            <TableCell sx={{ minWidth: 120, height: '53px' }}><strong>End Date</strong></TableCell>
+
+                                            {/* Right side columns */}
+                                            <TableCell sx={{ minWidth: 120, height: '53px' }}><strong>Actual Start Date</strong></TableCell>
+                                            <TableCell sx={{ minWidth: 120, height: '53px' }}><strong>Actual End Date</strong></TableCell>
+                                            <TableCell sx={{ minWidth: 120, height: '53px' }}><strong>Estimated Efforts</strong></TableCell>
+                                            <TableCell sx={{ minWidth: 120, height: '53px' }}><strong>Approved By</strong></TableCell>
+                                            <TableCell sx={{ minWidth: 120, height: '53px' }}><strong>Total Efforts</strong></TableCell>
+                                            <TableCell sx={{ minWidth: 120, height: '53px' }}><strong>Variance Days</strong></TableCell>
+                                            <TableCell sx={{ minWidth: 120, height: '53px' }}><strong>Remark</strong></TableCell>
+                                            <TableCell sx={{ minWidth: 100, height: '53px' }}><strong>Status</strong></TableCell>
+                                            <TableCell sx={{ minWidth: 120, height: '53px' }}><strong>Actions</strong></TableCell>
                                         </TableRow>
-                                    ) : (
-                                        paginatedData.map((poc) => (
-                                            <TableRow key={poc.pocId} hover>
-                                                <TableCell sx={{ fontWeight: 'bold' }}>{poc.pocId}</TableCell>
-                                                <TableCell>{poc.pocName}</TableCell>
-                                                <TableCell>{poc.entityType}</TableCell>
-                                                <TableCell>{poc.entityName}</TableCell>
-                                                <TableCell>{poc.salesPerson}</TableCell>
-                                                <TableCell>
-                                                    <Tooltip title={poc.description || '-'}>
-                                                        <span>{truncateText(poc.description, 20)}</span>
-                                                    </Tooltip>
-                                                </TableCell>
-                                                <TableCell>{poc.assignedTo}</TableCell>
-                                                <TableCell>{poc.createdBy}</TableCell>
-                                                <TableCell>{formatDate(poc.startDate)}</TableCell>
-                                                <TableCell>{formatDate(poc.endDate)}</TableCell>
-                                                <TableCell>{formatDate(poc.actualStartDate)}</TableCell>
-                                                <TableCell>{formatDate(poc.actualEndDate)}</TableCell>
-                                                <TableCell>{formatNumber(poc.estimatedEfforts)}</TableCell>
-                                                <TableCell>{formatNumber(poc.totalEfforts)}</TableCell>
-                                                <TableCell>{formatNumber(poc.varianceDays)}</TableCell>
-                                                <TableCell>{poc.approvedBy || '-'}</TableCell>
-                                                <TableCell>
-                                                    <Tooltip title={poc.remark || '-'}>
-                                                        <span>{truncateText(poc.remark, 15)}</span>
-                                                    </Tooltip>
-                                                </TableCell>
-                                                <TableCell>{poc.region}</TableCell>
-                                                <TableCell>{getBillableChip(poc.isBillable)}</TableCell>
-                                                <TableCell>{poc.pocType}</TableCell>
-                                                <TableCell>{poc.spocEmail || '-'}</TableCell>
-                                                <TableCell>
-                                                    <Tooltip title={poc.spocDesignation || '-'}>
-                                                        <span>{truncateText(poc.spocDesignation, 15)}</span>
-                                                    </Tooltip>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Tooltip title={poc.tags || '-'}>
-                                                        <span>{truncateText(poc.tags, 15)}</span>
-                                                    </Tooltip>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Chip
-                                                        label={poc.status || 'Draft'}
-                                                        color={getStatusColor(poc.status)}
-                                                        size="small"
-                                                    />
-                                                </TableCell>
-                                                <TableCell>
-                                                    <IconButton
-                                                        size="small"
-                                                        onClick={() => handleViewDetails(poc)}
-                                                        color="primary"
-                                                        title="View Details"
-                                                    >
-                                                        <VisibilityIcon />
-                                                    </IconButton>
-                                                    <IconButton 
-                                                        size="small" 
-                                                        color="secondary" 
-                                                        title="Edit"
-                                                        onClick={() => handleEditOpen(poc)}
-                                                    >
-                                                        <EditIcon />
-                                                    </IconButton>
-                                                    <IconButton
-                                                        size="small"
-                                                        color="error"
-                                                        title="Delete"
-                                                        onClick={() => handleDeleteClick(poc)}
-                                                    >
-                                                        <DeleteIcon />
-                                                    </IconButton>
+                                    </TableHead>
+                                    <TableBody>
+                                        {paginatedData.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={25} align="center" sx={{ py: 3, height: '53px' }}>
+                                                    <Typography variant="body1" color="textSecondary">
+                                                        {searchTerm ? 'No matching POC codes found' : 'No POC codes available. Click "Create POC" to get started.'}
+                                                    </Typography>
                                                 </TableCell>
                                             </TableRow>
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
+                                        ) : (
+                                            paginatedData.map((poc) => (
+                                                <TableRow key={poc.pocId} hover sx={{ height: '53px' }}>
+                                                    {/* Left side data */}
+                                                    <TableCell sx={{ fontWeight: 'bold', height: '53px' }}>{poc.pocId}</TableCell>
+                                                    <TableCell sx={{ height: '53px' }}>{poc.pocName}</TableCell>
+                                                    <TableCell sx={{ height: '53px' }}>
+                                                        <Tooltip title={poc.description || '-'}>
+                                                            <span>{truncateText(poc.description, 20)}</span>
+                                                        </Tooltip>
+                                                    </TableCell>
+                                                    <TableCell sx={{ height: '53px' }}>{poc.entityType}</TableCell>
+                                                    <TableCell sx={{ height: '53px' }}>{poc.pocType}</TableCell>
+                                                    <TableCell sx={{ height: '53px' }}>{poc.entityName}</TableCell>
+                                                    <TableCell sx={{ height: '53px' }}>{poc.salesPerson}</TableCell>
+                                                    <TableCell sx={{ height: '53px' }}>{poc.region}</TableCell>
+                                                    <TableCell sx={{ height: '53px' }}>{poc.spocEmail || '-'}</TableCell>
+                                                    <TableCell sx={{ height: '53px' }}>
+                                                        <Tooltip title={poc.spocDesignation || '-'}>
+                                                            <span>{truncateText(poc.spocDesignation, 15)}</span>
+                                                        </Tooltip>
+                                                    </TableCell>
+                                                    <TableCell sx={{ height: '53px' }}>{getBillableChip(poc.isBillable)}</TableCell>
+                                                    <TableCell sx={{ height: '53px' }}>
+                                                        <Tooltip title={poc.tags || '-'}>
+                                                            <span>{truncateText(poc.tags, 15)}</span>
+                                                        </Tooltip>
+                                                    </TableCell>
+                                                    <TableCell sx={{ height: '53px' }}>{poc.assignedTo}</TableCell>
+                                                    <TableCell sx={{ height: '53px' }}>{poc.createdBy}</TableCell>
+                                                    <TableCell sx={{ height: '53px' }}>{formatDate(poc.startDate)}</TableCell>
+                                                    <TableCell sx={{ height: '53px' }}>{formatDate(poc.endDate)}</TableCell>
+
+                                                    {/* Right side data */}
+                                                    <TableCell sx={{ height: '53px' }}>{formatDate(poc.actualStartDate)}</TableCell>
+                                                    <TableCell sx={{ height: '53px' }}>{formatDate(poc.actualEndDate)}</TableCell>
+                                                    <TableCell sx={{ height: '53px' }}>{formatNumber(poc.estimatedEfforts)}</TableCell>
+                                                    <TableCell sx={{ height: '53px' }}>{poc.approvedBy || '-'}</TableCell>
+                                                    <TableCell sx={{ height: '53px' }}>{formatNumber(poc.totalEfforts)}</TableCell>
+                                                    <TableCell sx={{ height: '53px' }}>{formatNumber(poc.varianceDays)}</TableCell>
+                                                    <TableCell sx={{ height: '53px' }}>
+                                                        <Tooltip title={poc.remark || '-'}>
+                                                            <span>{truncateText(poc.remark, 15)}</span>
+                                                        </Tooltip>
+                                                    </TableCell>
+                                                    <TableCell sx={{ height: '53px' }}>
+                                                        <Chip
+                                                            label={poc.status || 'Draft'}
+                                                            color={getStatusColor(poc.status)}
+                                                            size="small"
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell sx={{ height: '53px' }}>
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={() => handleViewDetails(poc)}
+                                                            color="primary"
+                                                            title="View Details"
+                                                        >
+                                                            <VisibilityIcon />
+                                                        </IconButton>
+                                                        <IconButton
+                                                            size="small"
+                                                            color="secondary"
+                                                            title="Edit"
+                                                            onClick={() => handleEditOpen(poc)}
+                                                        >
+                                                            <EditIcon />
+                                                        </IconButton>
+                                                        <IconButton
+                                                            size="small"
+                                                            color="error"
+                                                            title="Delete"
+                                                            onClick={() => handleDeleteClick(poc)}
+                                                        >
+                                                            <DeleteIcon />
+                                                        </IconButton>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        </Box>
 
                         <TablePagination
                             rowsPerPageOptions={[5, 10, 25]}

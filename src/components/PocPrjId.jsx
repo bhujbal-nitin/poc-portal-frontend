@@ -11,6 +11,7 @@ import CloseIcon from '@mui/icons-material/Close';
 
 const PocPrjId = ({ onClose, onSuccess }) => {
     // Form states
+    const [idPrefix, setIdPrefix] = useState('');
     const [pocId, setPocId] = useState('');
     const [pocName, setPocName] = useState('');
     const [entityType, setEntityType] = useState('');
@@ -30,6 +31,7 @@ const PocPrjId = ({ onClose, onSuccess }) => {
     const [tags, setTags] = useState([]);
     const [loading, setLoading] = useState(false);
     const [apiLoading, setApiLoading] = useState(true);
+    const [idLoading, setIdLoading] = useState(false);
 
     // Dropdown options
     const [salesPersons, setSalesPersons] = useState([]);
@@ -40,6 +42,23 @@ const PocPrjId = ({ onClose, onSuccess }) => {
 
     // Error states
     const [errors, setErrors] = useState({});
+
+    // ID prefix options
+    const idPrefixOptions = [
+        'POC',
+        'POP',
+        'PartnerSupport',
+        'FeasibilityCheck',
+        'OperationalSupport',
+        'R&D',
+        'SolutionConsultation',
+        'EffortsEstimation',
+        'Task',
+        'Demo',
+        'Internal',
+        'Event',
+        'Workshop'
+    ];
 
     // Function to get username from localStorage
     const getUsername = () => {
@@ -61,9 +80,9 @@ const PocPrjId = ({ onClose, onSuccess }) => {
     const extractName = (item) => {
         if (typeof item === 'string') return item;
         if (typeof item === 'object' && item !== null) {
-            return item.fullName || item.name || item.username || item.email || 
-                   `${item.firstName || ''} ${item.lastName || ''}`.trim() ||
-                   Object.values(item).find(val => typeof val === 'string') || '';
+            return item.fullName || item.name || item.username || item.email ||
+                `${item.firstName || ''} ${item.lastName || ''}`.trim() ||
+                Object.values(item).find(val => typeof val === 'string') || '';
         }
         return String(item);
     };
@@ -71,9 +90,9 @@ const PocPrjId = ({ onClose, onSuccess }) => {
     // Function to process API response data into dropdown options
     const processApiData = (data) => {
         if (!data) return [];
-        
+
         let processedData = [];
-        
+
         // Handle different response formats
         if (Array.isArray(data)) {
             processedData = data.map(item => extractName(item)).filter(name => name);
@@ -101,8 +120,35 @@ const PocPrjId = ({ onClose, onSuccess }) => {
         } else if (typeof data === 'string') {
             processedData = [data];
         }
-        
+
         return processedData;
+    };
+
+    // Function to fetch next available ID for the selected prefix
+    const fetchNextId = async (prefix) => {
+        if (!prefix) {
+            setPocId('');
+            return;
+        }
+
+        try {
+            setIdLoading(true);
+            const token = localStorage.getItem('authToken');
+            const response = await axios.get(
+                `http://localhost:5050/poc/next-id/${prefix}`,
+                {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                }
+            );
+
+            setPocId(response.data.nextId);
+        } catch (error) {
+            console.error('Error fetching next ID:', error);
+            // Fallback: show prefix without number if API fails
+            setPocId(`${prefix}-01`);
+        } finally {
+            setIdLoading(false);
+        }
     };
 
     // Load dropdown data from APIs
@@ -189,12 +235,23 @@ const PocPrjId = ({ onClose, onSuccess }) => {
         fetchDropdownData();
     }, []);
 
+    // Fetch next ID when prefix changes
+    // Remove or modify this useEffect
+    useEffect(() => {
+        if (idPrefix) {
+            // Just show the prefix in the UI, backend will generate the full ID
+            setPocId(`${idPrefix}-XX`); // Show placeholder
+        } else {
+            setPocId('');
+        }
+    }, [idPrefix]);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Validation
+        // Validation - remove pocId validation since we're generating it on backend
         const newErrors = {};
-        if (!pocId) newErrors.pocId = 'POC/Project ID is required';
+        if (!idPrefix) newErrors.idPrefix = 'ID Prefix is required';
         if (!pocName) newErrors.pocName = 'POC/Project Name is required';
         if (!entityType) newErrors.entityType = 'Client Type is required';
         if (!entityName) newErrors.entityName = 'Company Name is required';
@@ -214,9 +271,9 @@ const PocPrjId = ({ onClose, onSuccess }) => {
             setLoading(true);
 
             try {
-                // Prepare form data for database
+                // Prepare form data - send only the prefix, not the generated ID
                 const formData = {
-                    pocId,
+                    pocId: idPrefix, // Send only the prefix now
                     pocName,
                     entityType,
                     entityName,
@@ -235,10 +292,8 @@ const PocPrjId = ({ onClose, onSuccess }) => {
                     tags: tags.join(',')
                 };
 
-                // Get authentication token
                 const token = localStorage.getItem('authToken');
 
-                // Make API call to save the data
                 const response = await axios.post('http://localhost:5050/poc/savepocprjid', formData, {
                     headers: {
                         'Content-Type': 'application/json',
@@ -248,6 +303,8 @@ const PocPrjId = ({ onClose, onSuccess }) => {
 
                 if (response.data.success) {
                     alert('POC Code created successfully!');
+                    // Update the local pocId with the generated ID from backend
+                    setPocId(response.data.data.pocId);
                     resetForm();
                     if (onSuccess) {
                         onSuccess();
@@ -267,8 +324,8 @@ const PocPrjId = ({ onClose, onSuccess }) => {
             }
         }
     };
-
     const resetForm = () => {
+        setIdPrefix('');
         setPocId('');
         setPocName('');
         setEntityType('');
@@ -334,15 +391,30 @@ const PocPrjId = ({ onClose, onSuccess }) => {
                         )}
 
                         <div className="form-row">
-                            <TextInput
-                                label="POC, Project ID: "
-                                value={pocId}
-                                onChange={setPocId}
-                                error={errors.pocId}
-                                placeholder="Enter POC/Project ID"
+                            <Dropdown
+                                label="ID Prefix: "
+                                options={idPrefixOptions}
+                                value={idPrefix}
+                                onChange={setIdPrefix}
+                                error={errors.idPrefix}
+                                placeholder="Select ID Prefix"
                                 required
                             />
 
+                            <div className="form-group">
+                                <label>POC, Project ID: <span className="required-asterisk">*</span></label>
+                                <input
+                                    type="text"
+                                    value={pocId || `${idPrefix ? idPrefix + '-XX' : ''}`}
+                                    readOnly
+                                    className={errors.pocId ? 'error' : ''}
+                                    placeholder="ID will be auto-generated after submission"
+                                />
+                                <div className="help-text">ID will be auto-generated when you submit</div>
+                            </div>
+                        </div>
+
+                        <div className="form-row">
                             <TextInput
                                 label="POC, Project Name: "
                                 value={pocName}
@@ -351,9 +423,7 @@ const PocPrjId = ({ onClose, onSuccess }) => {
                                 placeholder="Enter POC/Project Name"
                                 required
                             />
-                        </div>
 
-                        <div className="form-row">
                             <Dropdown
                                 label="Partner, Client, Internal: "
                                 options={['Partner', 'Client', 'Internal']}
@@ -363,7 +433,9 @@ const PocPrjId = ({ onClose, onSuccess }) => {
                                 placeholder="Select Client Type"
                                 required
                             />
+                        </div>
 
+                        <div className="form-row">
                             <TextInput
                                 label="Name of Partner, Client, Internal: "
                                 value={entityName}
@@ -372,9 +444,7 @@ const PocPrjId = ({ onClose, onSuccess }) => {
                                 placeholder="Enter Name"
                                 required
                             />
-                        </div>
 
-                        <div className="form-row">
                             <Dropdown
                                 label="Sales Person: "
                                 options={salesPersons}
@@ -385,7 +455,9 @@ const PocPrjId = ({ onClose, onSuccess }) => {
                                 required
                                 loading={apiLoading}
                             />
+                        </div>
 
+                        <div className="form-row">
                             <TextInput
                                 label="Description:"
                                 value={description}
@@ -394,9 +466,7 @@ const PocPrjId = ({ onClose, onSuccess }) => {
                                 multiline
                                 rows={3}
                             />
-                        </div>
 
-                        <div className="form-row">
                             <Dropdown
                                 label="Assigned To: "
                                 options={users}
@@ -407,7 +477,9 @@ const PocPrjId = ({ onClose, onSuccess }) => {
                                 required
                                 loading={apiLoading}
                             />
+                        </div>
 
+                        <div className="form-row">
                             <Dropdown
                                 label="Created By: "
                                 options={createdByOptions}
@@ -418,9 +490,7 @@ const PocPrjId = ({ onClose, onSuccess }) => {
                                 required
                                 loading={apiLoading}
                             />
-                        </div>
 
-                        <div className="form-row">
                             <div className="form-group">
                                 <label>Start Date: <span className="required-asterisk">*</span></label>
                                 <input
@@ -431,7 +501,9 @@ const PocPrjId = ({ onClose, onSuccess }) => {
                                 />
                                 {errors.startDate && <span className="error-text">{errors.startDate}</span>}
                             </div>
+                        </div>
 
+                        <div className="form-row">
                             <div className="form-group">
                                 <label>End Date: <span className="required-asterisk">*</span></label>
                                 <input
@@ -442,9 +514,7 @@ const PocPrjId = ({ onClose, onSuccess }) => {
                                 />
                                 {errors.endDate && <span className='error-text'>{errors.endDate}</span>}
                             </div>
-                        </div>
 
-                        <div className="form-row">
                             <TextInput
                                 label="Remark:"
                                 value={remark}
@@ -453,7 +523,9 @@ const PocPrjId = ({ onClose, onSuccess }) => {
                                 multiline
                                 rows={2}
                             />
+                        </div>
 
+                        <div className="form-row">
                             <Dropdown
                                 label="Region: "
                                 options={regions}
@@ -463,9 +535,7 @@ const PocPrjId = ({ onClose, onSuccess }) => {
                                 placeholder="Select Region"
                                 required
                             />
-                        </div>
 
-                        <div className="form-row">
                             <Dropdown
                                 label="Is Billable: "
                                 options={['Yes', 'No']}
@@ -475,7 +545,9 @@ const PocPrjId = ({ onClose, onSuccess }) => {
                                 placeholder="Select Billable Status"
                                 required
                             />
+                        </div>
 
+                        <div className="form-row">
                             <Dropdown
                                 label="POC Type: "
                                 options={[
@@ -499,9 +571,7 @@ const PocPrjId = ({ onClose, onSuccess }) => {
                                 placeholder="Select POC Type"
                                 required
                             />
-                        </div>
 
-                        <div className="form-row">
                             <TextInput
                                 label="SPOC Email Address:"
                                 value={spocEmail}
@@ -509,16 +579,16 @@ const PocPrjId = ({ onClose, onSuccess }) => {
                                 placeholder="Enter SPOC Email"
                                 type="email"
                             />
+                        </div>
 
+                        <div className="form-row">
                             <TextInput
                                 label="SPOC Designation:"
                                 value={spocDesignation}
                                 onChange={setSpocDesignation}
                                 placeholder="Enter SPOC Designation"
                             />
-                        </div>
 
-                        <div className="form-row">
                             <div className="form-group">
                                 <label>Tags <span className="required-asterisk">*</span></label>
                                 <div className={`tags-container ${errors.tags ? 'tags-error-border' : ''}`}>
@@ -540,15 +610,13 @@ const PocPrjId = ({ onClose, onSuccess }) => {
                                 </div>
                                 {errors.tags && <span className="error-text">{errors.tags}</span>}
                             </div>
-
-                            <div></div>
                         </div>
 
                         <div className="form-actions">
                             <Button
                                 type="submit"
                                 label={loading ? "Saving..." : "Submit"}
-                                disabled={loading || apiLoading}
+                                disabled={loading || apiLoading || idLoading}
                             />
                             <Button
                                 type="button"
